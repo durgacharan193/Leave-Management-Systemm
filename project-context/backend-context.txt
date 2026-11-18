@@ -1,0 +1,2805 @@
+﻿--- BACKEND PROJECT STRUCTURE ---
+
+.env
+.env.example
+migrate-names.js
+package-lock.json
+package.json
+reset-db.js
+seed.js
+server.js
+view-db.js
+config\db.js
+controllers\authController.js
+controllers\leaveController.js
+controllers\userController.js
+middleware\auth.js
+middleware\errorHandler.js
+middleware\roleCheck.js
+middleware\validate.js
+models\Leave.js
+models\User.js
+routes\authRoutes.js
+routes\leaveRoutes.js
+routes\userRoutes.js
+tests\auth.test.js
+tests\leave.test.js
+utils\logger.js
+
+--- BACKEND FILE CONTENTS ---
+
+
+======================================
+FILE: .env
+======================================
+
+# Server
+PORT=5000
+NODE_ENV=development
+
+# MongoDB
+MONGO_URI=mongodb://localhost:27017/leave-management
+
+# JWT
+JWT_SECRET=leaveflow_super_secret_jwt_key_2024_change_in_production
+JWT_EXPIRE=7d
+
+# Email (Optional - Nodemailer)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_app_password
+FROM_EMAIL=noreply@leavemanagement.com
+FROM_NAME=Leave Management System
+
+# Frontend URL (for CORS)
+CLIENT_URL=http://localhost:5173
+
+
+======================================
+FILE: .env.example
+======================================
+
+# Server
+PORT=5000
+NODE_ENV=development
+
+# MongoDB
+MONGO_URI=mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/leave-management?retryWrites=true&w=majority
+
+# JWT
+JWT_SECRET=your_super_secret_jwt_key_change_this_in_production
+JWT_EXPIRE=7d
+
+# Email (Optional - Nodemailer)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_app_password
+FROM_EMAIL=noreply@leavemanagement.com
+FROM_NAME=Leave Management System
+
+# Frontend URL (for CORS)
+CLIENT_URL=http://localhost:5173
+
+
+======================================
+FILE: migrate-names.js
+======================================
+
+const mongoose = require('mongoose');
+const dotenv = require('dotenv');
+
+dotenv.config();
+
+const migrate = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    const Leave = mongoose.connection.db.collection('leaves');
+    const User = mongoose.connection.db.collection('users');
+    
+    const leaves = await Leave.find({}).toArray();
+    for(const l of leaves) {
+      if (!l.employeeName) {
+        const u = await User.findOne({_id: l.employee});
+        if(u) {
+          await Leave.updateOne({_id: l._id}, {$set: {employeeName: u.name}});
+        }
+      }
+    }
+    console.log('Successfully added names to all existing leaves');
+    process.exit(0);
+  } catch (err) {
+    console.error(err);
+    process.exit(1);
+  }
+};
+migrate();
+
+
+======================================
+FILE: package.json
+======================================
+
+{
+  "name": "leave-management-backend",
+  "version": "1.0.0",
+  "description": "Backend API for Role-Based Leave Management System",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "seed": "node seed.js",
+    "test": "jest --forceExit --detectOpenHandles --verbose"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "express-rate-limit": "^7.4.0",
+    "express-validator": "^7.2.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.6.0",
+    "morgan": "^1.10.0",
+    "nodemailer": "^6.9.15"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "mongodb-memory-server": "^10.0.0",
+    "nodemon": "^3.1.4",
+    "supertest": "^7.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testTimeout": 30000
+  }
+}
+
+
+======================================
+FILE: reset-db.js
+======================================
+
+const mongoose = require('mongoose');
+const dotenv = require('dotenv');
+const User = require('./models/User');
+const Leave = require('./models/Leave');
+
+dotenv.config();
+
+/**
+ * Database Reset Script
+ * Completely wipes all leaves and employees formatting the application fresh.
+ * Leaves ONLY the core system Admin account so you can log in.
+ */
+const resetDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log('Connected to MongoDB');
+
+    // 1. Wipe everything
+    await Leave.deleteMany({});
+    await User.deleteMany({});
+    console.log('âœ… Wiped all previous history, leaves, and users.');
+
+    // 2. Create foundational System Admin so user can log in
+    await User.create({
+      name: 'System Admin',
+      email: 'admin@company.com',
+      password: 'admin123',
+      role: 'admin',
+      department: 'Administration',
+      gender: 'male'
+    });
+    console.log('âœ… Created fresh System Admin account.');
+
+    console.log('\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
+    console.log('    âœ¨ APPLICATION RESET SUCCESSFUL');
+    console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
+    console.log('The application is now completely fresh.');
+    console.log('All previous leaves and employees are gone.');
+    console.log('\nTo get started, log in with:');
+    console.log('Email:    admin@company.com');
+    console.log('Password: admin123');
+    console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n');
+
+    process.exit(0);
+  } catch (error) {
+    console.error('Reset error:', error.message);
+    process.exit(1);
+  }
+};
+
+resetDB();
+
+
+======================================
+FILE: seed.js
+======================================
+
+const mongoose = require('mongoose');
+const dotenv = require('dotenv');
+const User = require('./models/User');
+const Leave = require('./models/Leave');
+
+dotenv.config();
+
+/**
+ * Database Seed Script
+ * Creates default admin, manager, and employee users for testing
+ * Uses realistic software company departments and roles
+ *
+ * Usage: npm run seed
+ */
+const seedData = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log('Connected to MongoDB');
+
+    // Clear existing data
+    await User.deleteMany({});
+    await Leave.deleteMany({});
+    console.log('Cleared existing data');
+
+    // Create Admin
+    const admin = await User.create({
+      name: 'System Admin',
+      email: 'admin@company.com',
+      password: 'admin123',
+      role: 'admin',
+      department: 'Administration',
+      gender: 'male',
+    });
+    console.log(`âœ… Admin created: ${admin.email} (${admin.role})`);
+
+    // Create Managers â€” each heads a department
+    const manager1 = await User.create({
+      name: 'Sarah Johnson',
+      email: 'sarah.manager@company.com',
+      password: 'manager123',
+      role: 'manager',
+      department: 'Engineering',
+      gender: 'female',
+    });
+
+    const manager2 = await User.create({
+      name: 'Michael Chen',
+      email: 'michael.manager@company.com',
+      password: 'manager123',
+      role: 'manager',
+      department: 'Marketing',
+      gender: 'male',
+    });
+
+    const manager3 = await User.create({
+      name: 'Priya Sharma',
+      email: 'priya.manager@company.com',
+      password: 'manager123',
+      role: 'manager',
+      department: 'Quality Assurance',
+      gender: 'female',
+    });
+
+    const manager4 = await User.create({
+      name: 'David Wilson',
+      email: 'david.manager@company.com',
+      password: 'manager123',
+      role: 'manager',
+      department: 'DevOps',
+      gender: 'male',
+    });
+    console.log('âœ… Managers created (Engineering, Marketing, QA, DevOps)');
+
+    // Create Employees â€” distributed across departments
+    const emp1 = await User.create({
+      name: 'Alice Williams',
+      email: 'alice@company.com',
+      password: 'employee123',
+      role: 'employee',
+      department: 'Engineering',
+      manager: manager1._id,
+      gender: 'female',
+    });
+
+    const emp2 = await User.create({
+      name: 'Bob Martinez',
+      email: 'bob@company.com',
+      password: 'employee123',
+      role: 'employee',
+      department: 'Engineering',
+      manager: manager1._id,
+      gender: 'male',
+    });
+
+    const emp3 = await User.create({
+      name: 'Carol Davis',
+      email: 'carol@company.com',
+      password: 'employee123',
+      role: 'employee',
+      department: 'Marketing',
+      manager: manager2._id,
+      gender: 'female',
+    });
+
+    const emp4 = await User.create({
+      name: 'Rajesh Kumar',
+      email: 'rajesh@company.com',
+      password: 'employee123',
+      role: 'employee',
+      department: 'Quality Assurance',
+      manager: manager3._id,
+      gender: 'male',
+    });
+
+    const emp5 = await User.create({
+      name: 'Emily Thompson',
+      email: 'emily@company.com',
+      password: 'employee123',
+      role: 'employee',
+      department: 'DevOps',
+      manager: manager4._id,
+      gender: 'female',
+    });
+
+    const emp6 = await User.create({
+      name: 'James Park',
+      email: 'james@company.com',
+      password: 'employee123',
+      role: 'employee',
+      department: 'Engineering',
+      manager: manager1._id,
+      gender: 'male',
+    });
+    console.log('âœ… Employees created across departments');
+
+    // Create sample leave requests
+    const today = new Date();
+
+    await Leave.create([
+      {
+        employee: emp1._id,
+        leaveType: 'casual',
+        startDate: new Date(today.getFullYear(), today.getMonth(), 20),
+        endDate: new Date(today.getFullYear(), today.getMonth(), 22),
+        reason: 'Family vacation',
+        status: 'pending',
+      },
+      {
+        employee: emp1._id,
+        leaveType: 'sick',
+        startDate: new Date(today.getFullYear(), today.getMonth() - 1, 10),
+        endDate: new Date(today.getFullYear(), today.getMonth() - 1, 11),
+        reason: 'Not feeling well',
+        status: 'approved',
+        reviewedBy: manager1._id,
+        reviewComment: 'Get well soon!',
+        reviewedAt: new Date(today.getFullYear(), today.getMonth() - 1, 9),
+      },
+      {
+        employee: emp2._id,
+        leaveType: 'paid',
+        startDate: new Date(today.getFullYear(), today.getMonth(), 15),
+        endDate: new Date(today.getFullYear(), today.getMonth(), 18),
+        reason: 'Personal work',
+        status: 'pending',
+      },
+      {
+        employee: emp3._id,
+        leaveType: 'casual',
+        startDate: new Date(today.getFullYear(), today.getMonth() - 1, 5),
+        endDate: new Date(today.getFullYear(), today.getMonth() - 1, 5),
+        reason: 'Doctor appointment',
+        status: 'rejected',
+        reviewedBy: manager2._id,
+        reviewComment: 'Important deadline that day, please reschedule',
+        reviewedAt: new Date(today.getFullYear(), today.getMonth() - 1, 4),
+      },
+      {
+        employee: emp3._id,
+        leaveType: 'sick',
+        startDate: new Date(today.getFullYear(), today.getMonth(), 25),
+        endDate: new Date(today.getFullYear(), today.getMonth(), 27),
+        reason: 'Medical procedure',
+        status: 'pending',
+      },
+      {
+        employee: emp4._id,
+        leaveType: 'casual',
+        startDate: new Date(today.getFullYear(), today.getMonth(), 12),
+        endDate: new Date(today.getFullYear(), today.getMonth(), 14),
+        reason: 'Wedding in family',
+        status: 'pending',
+      },
+      {
+        employee: emp5._id,
+        leaveType: 'paid',
+        startDate: new Date(today.getFullYear(), today.getMonth() - 1, 20),
+        endDate: new Date(today.getFullYear(), today.getMonth() - 1, 22),
+        reason: 'Conference attendance',
+        status: 'approved',
+        reviewedBy: manager4._id,
+        reviewComment: 'Approved. Please share learnings with team.',
+        reviewedAt: new Date(today.getFullYear(), today.getMonth() - 1, 18),
+      },
+      {
+        employee: emp6._id,
+        leaveType: 'sick',
+        startDate: new Date(today.getFullYear(), today.getMonth(), 8),
+        endDate: new Date(today.getFullYear(), today.getMonth(), 9),
+        reason: 'Fever and cold',
+        status: 'pending',
+      },
+    ]);
+    console.log('âœ… Sample leave requests created');
+
+    console.log('\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
+    console.log('      ðŸš€ SEED COMPLETE â€” LOGIN CREDENTIALS');
+    console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
+    console.log('');
+    console.log('  ðŸ›¡ï¸  ADMIN:');
+    console.log('      admin@company.com / admin123');
+    console.log('');
+    console.log('  ðŸ‘” MANAGERS:');
+    console.log('      sarah.manager@company.com / manager123   (Engineering)');
+    console.log('      michael.manager@company.com / manager123 (Marketing)');
+    console.log('      priya.manager@company.com / manager123   (Quality Assurance)');
+    console.log('      david.manager@company.com / manager123   (DevOps)');
+    console.log('');
+    console.log('  ðŸ‘¤ EMPLOYEES:');
+    console.log('      alice@company.com / employee123           (Engineering)');
+    console.log('      bob@company.com / employee123             (Engineering)');
+    console.log('      carol@company.com / employee123           (Marketing)');
+    console.log('      rajesh@company.com / employee123          (Quality Assurance)');
+    console.log('      emily@company.com / employee123           (DevOps)');
+    console.log('      james@company.com / employee123           (Engineering)');
+    console.log('');
+    console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
+
+    process.exit(0);
+  } catch (error) {
+    console.error('Seed error:', error.message);
+    process.exit(1);
+  }
+};
+
+seedData();
+
+
+======================================
+FILE: server.js
+======================================
+
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
+const dotenv = require('dotenv');
+const connectDB = require('./config/db');
+const { errorHandler } = require('./middleware/errorHandler');
+const logger = require('./utils/logger');
+
+// Load environment variables
+dotenv.config();
+
+// Import routes
+const authRoutes = require('./routes/authRoutes');
+const leaveRoutes = require('./routes/leaveRoutes');
+const userRoutes = require('./routes/userRoutes');
+
+// Initialize Express app
+const app = express();
+
+// ---------------------
+// Security Middleware
+// ---------------------
+app.use(helmet());
+
+// Rate limiting: 100 requests per 15 minutes per IP
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: {
+    success: false,
+    message: 'Too many requests from this IP, please try again later',
+  },
+});
+app.use('/api/', limiter);
+
+// ---------------------
+// General Middleware
+// ---------------------
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    credentials: true,
+  })
+);
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+
+// HTTP request logging (skip in test environment)
+if (process.env.NODE_ENV !== 'test') {
+  app.use(morgan('dev'));
+}
+
+// ---------------------
+// API Routes
+// ---------------------
+app.use('/api/auth', authRoutes);
+app.use('/api/leaves', leaveRoutes);
+app.use('/api/users', userRoutes);
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Leave Management System API is running',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Route ${req.originalUrl} not found`,
+  });
+});
+
+// Global error handler
+app.use(errorHandler);
+
+// ---------------------
+// Start Server
+// ---------------------
+const PORT = process.env.PORT || 5000;
+
+// Only start listening if not in test mode
+if (process.env.NODE_ENV !== 'test') {
+  connectDB().then(() => {
+    app.listen(PORT, () => {
+      logger.info(`Server running on port ${PORT}`, {
+        environment: process.env.NODE_ENV,
+        port: PORT,
+      });
+    });
+  });
+}
+
+module.exports = app;
+
+
+======================================
+FILE: view-db.js
+======================================
+
+const mongoose = require('mongoose');
+const dotenv = require('dotenv');
+const User = require('./models/User');
+const Leave = require('./models/Leave');
+
+dotenv.config();
+
+/**
+ * Quick DB viewer â€” shows all users and leave records
+ * Usage: node view-db.js
+ */
+const viewDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+
+    console.log('\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”');
+    console.log('  ðŸ“Š DATABASE OVERVIEW â€” leave-management');
+    console.log('â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n');
+
+    // --- USERS ---
+    const users = await User.find().populate('manager', 'name').lean();
+    
+    console.log('  ðŸ‘¥ USERS (' + users.length + ' total)');
+    console.log('  ' + 'â”€'.repeat(90));
+    console.log('  ' + 
+      'ROLE'.padEnd(12) + 
+      'NAME'.padEnd(22) + 
+      'DEPARTMENT'.padEnd(22) + 
+      'GENDER'.padEnd(10) + 
+      'MANAGER'.padEnd(20) +
+      'STATUS'
+    );
+    console.log('  ' + 'â”€'.repeat(90));
+
+    users.forEach(u => {
+      const roleIcon = u.role === 'admin' ? 'ðŸ›¡ï¸' : u.role === 'manager' ? 'ðŸ‘”' : 'ðŸ‘¤';
+      console.log('  ' + 
+        (roleIcon + ' ' + u.role).padEnd(14) + 
+        u.name.padEnd(22) + 
+        u.department.padEnd(22) + 
+        u.gender.padEnd(10) + 
+        (u.manager?.name || 'â€”').padEnd(20) +
+        (u.isActive ? 'âœ… Active' : 'âŒ Inactive')
+      );
+    });
+
+    // --- LEAVES ---
+    const leaves = await Leave.find()
+      .populate('employee', 'name department')
+      .populate('reviewedBy', 'name')
+      .sort({ createdAt: -1 })
+      .lean();
+    
+    console.log('\n\n  ðŸ“ LEAVE RECORDS (' + leaves.length + ' total)');
+    console.log('  ' + 'â”€'.repeat(100));
+    console.log('  ' + 
+      'STATUS'.padEnd(14) + 
+      'EMPLOYEE'.padEnd(20) + 
+      'DEPARTMENT'.padEnd(20) + 
+      'TYPE'.padEnd(12) + 
+      'DATES'.padEnd(24) + 
+      'REASON'
+    );
+    console.log('  ' + 'â”€'.repeat(100));
+
+    leaves.forEach(l => {
+      const statusIcon = l.status === 'approved' ? 'âœ…' : l.status === 'rejected' ? 'âŒ' : l.status === 'pending' ? 'â³' : 'ðŸš«';
+      const start = new Date(l.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const end = new Date(l.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      
+      console.log('  ' + 
+        (statusIcon + ' ' + l.status).padEnd(16) + 
+        (l.employee?.name || 'N/A').padEnd(20) + 
+        (l.employee?.department || 'N/A').padEnd(20) + 
+        l.leaveType.padEnd(12) + 
+        (start + ' â†’ ' + end).padEnd(24) + 
+        l.reason.substring(0, 30)
+      );
+      if (l.reviewComment) {
+        console.log('  ' + ' '.repeat(16) + 'ðŸ’¬ Review: ' + l.reviewComment);
+      }
+    });
+
+    // --- SUMMARY ---
+    const statusCounts = {};
+    leaves.forEach(l => {
+      statusCounts[l.status] = (statusCounts[l.status] || 0) + 1;
+    });
+
+    console.log('\n\n  ðŸ“ˆ SUMMARY');
+    console.log('  ' + 'â”€'.repeat(40));
+    console.log('  Total Users:    ' + users.length);
+    console.log('  Total Leaves:   ' + leaves.length);
+    console.log('  â³ Pending:      ' + (statusCounts.pending || 0));
+    console.log('  âœ… Approved:     ' + (statusCounts.approved || 0));
+    console.log('  âŒ Rejected:     ' + (statusCounts.rejected || 0));
+    console.log('  ðŸš« Cancelled:    ' + (statusCounts.cancelled || 0));
+    console.log('\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n');
+
+    process.exit(0);
+  } catch (error) {
+    console.error('Error:', error.message);
+    process.exit(1);
+  }
+};
+
+viewDB();
+
+
+======================================
+FILE: config\db.js
+======================================
+
+const mongoose = require('mongoose');
+const logger = require('../utils/logger');
+
+/**
+ * Connect to MongoDB Atlas
+ * Retries connection on failure with exponential backoff
+ */
+const connectDB = async () => {
+  try {
+    const conn = await mongoose.connect(process.env.MONGO_URI);
+    logger.info(`MongoDB Connected: ${conn.connection.host}`);
+  } catch (error) {
+    logger.error(`MongoDB connection error: ${error.message}`);
+    process.exit(1);
+  }
+};
+
+module.exports = connectDB;
+
+
+======================================
+FILE: controllers\authController.js
+======================================
+
+const jwt = require('jsonwebtoken');
+const { body } = require('express-validator');
+const User = require('../models/User');
+const logger = require('../utils/logger');
+
+/**
+ * Generate JWT Token
+ * @param {string} id - User ID to encode in the token
+ * @returns {string} Signed JWT token
+ */
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRE || '7d',
+  });
+};
+
+/**
+ * Validation rules for registration
+ */
+const registerValidation = [
+  body('name')
+    .trim()
+    .notEmpty()
+    .withMessage('Name is required')
+    .isLength({ max: 50 })
+    .withMessage('Name cannot exceed 50 characters'),
+  body('email')
+    .trim()
+    .isEmail()
+    .withMessage('Please provide a valid email')
+    .normalizeEmail(),
+  body('password')
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters'),
+  body('department').optional().trim(),
+  body('gender').optional().isIn(['male', 'female', 'other']),
+];
+
+/**
+ * Validation rules for login
+ */
+const loginValidation = [
+  body('email')
+    .trim()
+    .isEmail()
+    .withMessage('Please provide a valid email')
+    .normalizeEmail(),
+  body('password').notEmpty().withMessage('Password is required'),
+];
+
+/**
+ * @desc    Register a new user
+ * @route   POST /api/auth/register
+ * @access  Public
+ */
+const register = async (req, res, next) => {
+  try {
+    const { name, email, password, department, gender } = req.body;
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'An account with this email already exists',
+      });
+    }
+
+    // Create user (defaults to 'employee' role)
+    const user = await User.create({
+      name,
+      email,
+      password,
+      department: department || 'General',
+      gender: gender || 'other',
+    });
+
+    // Generate token
+    const token = generateToken(user._id);
+
+    logger.info('New user registered', { userId: user._id, email: user.email });
+
+    res.status(201).json({
+      success: true,
+      message: 'Registration successful',
+      data: {
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          department: user.department,
+          gender: user.gender,
+          leaveBalance: user.leaveBalance,
+        },
+        token,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Login user & return JWT
+ * @route   POST /api/auth/login
+ * @access  Public
+ */
+const login = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+
+    // Find user and include password field
+    const user = await User.findOne({ email }).select('+password');
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password',
+      });
+    }
+
+    if (!user.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: 'Account has been deactivated. Contact your administrator.',
+      });
+    }
+
+    // Check password
+    const isMatch = await user.matchPassword(password);
+
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password',
+      });
+    }
+
+    // Generate token
+    const token = generateToken(user._id);
+
+    logger.info('User logged in', { userId: user._id, role: user.role });
+
+    res.status(200).json({
+      success: true,
+      message: 'Login successful',
+      data: {
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          department: user.department,
+          gender: user.gender,
+          leaveBalance: user.leaveBalance,
+          avatar: user.avatar,
+        },
+        token,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Get current logged-in user profile
+ * @route   GET /api/auth/me
+ * @access  Private
+ */
+const getMe = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id).populate(
+      'manager',
+      'name email'
+    );
+
+    res.status(200).json({
+      success: true,
+      data: { user },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Update current user's password
+ * @route   PUT /api/auth/password
+ * @access  Private
+ */
+const updatePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    const user = await User.findById(req.user._id).select('+password');
+
+    // Check current password
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password is incorrect',
+      });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    // Generate new token
+    const token = generateToken(user._id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Password updated successfully',
+      data: { token },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  register,
+  login,
+  getMe,
+  updatePassword,
+  registerValidation,
+  loginValidation,
+};
+
+
+======================================
+FILE: controllers\leaveController.js
+======================================
+
+const { body } = require('express-validator');
+const Leave = require('../models/Leave');
+const User = require('../models/User');
+const logger = require('../utils/logger');
+
+/**
+ * Validation rules for applying leave
+ */
+const applyLeaveValidation = [
+  body('leaveType')
+    .isIn(['casual', 'sick', 'paid', 'maternity'])
+    .withMessage('Leave type must be casual, sick, paid, or maternity'),
+  body('startDate')
+    .isISO8601()
+    .withMessage('Start date must be a valid date'),
+  body('endDate')
+    .isISO8601()
+    .withMessage('End date must be a valid date'),
+  body('reason')
+    .trim()
+    .notEmpty()
+    .withMessage('Reason is required')
+    .isLength({ max: 500 })
+    .withMessage('Reason cannot exceed 500 characters'),
+];
+
+/**
+ * Validation rules for reviewing leave
+ */
+const reviewLeaveValidation = [
+  body('status')
+    .isIn(['approved', 'rejected'])
+    .withMessage('Status must be approved or rejected'),
+  body('reviewComment')
+    .optional()
+    .trim()
+    .isLength({ max: 300 })
+    .withMessage('Review comment cannot exceed 300 characters'),
+];
+
+/**
+ * @desc    Apply for leave
+ * @route   POST /api/leaves
+ * @access  Private (Employee)
+ */
+const applyLeave = async (req, res, next) => {
+  try {
+    const { leaveType, startDate, endDate, reason } = req.body;
+
+    // Validate dates
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (end < start) {
+      return res.status(400).json({
+        success: false,
+        message: 'End date must be on or after start date',
+      });
+    }
+
+    // Calculate duration
+    const duration = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+
+    // Check leave balance
+    const user = await User.findById(req.user._id);
+
+    if (leaveType === 'maternity' && user.gender !== 'female') {
+      return res.status(400).json({
+        success: false,
+        message: 'Maternity leave is only available for female employees',
+      });
+    }
+
+    if (user.leaveBalance[leaveType] < duration) {
+      return res.status(400).json({
+        success: false,
+        message: `Insufficient ${leaveType} leave balance. Available: ${user.leaveBalance[leaveType]}, Requested: ${duration}`,
+      });
+    }
+
+    // Check for overlapping leave requests
+    const overlapping = await Leave.findOne({
+      employee: req.user._id,
+      status: { $in: ['pending', 'approved'] },
+      $or: [
+        { startDate: { $lte: end }, endDate: { $gte: start } },
+      ],
+    });
+
+    if (overlapping) {
+      return res.status(400).json({
+        success: false,
+        message: 'You already have a leave request overlapping with these dates',
+      });
+    }
+
+    const leave = await Leave.create({
+      employee: req.user._id,
+      employeeName: user.name,
+      leaveType,
+      startDate: start,
+      endDate: end,
+      reason,
+    });
+
+    logger.info('Leave applied', {
+      userId: req.user._id,
+      leaveId: leave._id,
+      type: leaveType,
+      duration,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Leave application submitted successfully',
+      data: { leave },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Get current user's leave history
+ * @route   GET /api/leaves/my
+ * @access  Private (Employee)
+ */
+const getMyLeaves = async (req, res, next) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      leaveType,
+      sort = '-createdAt',
+    } = req.query;
+
+    const query = { employee: req.user._id };
+
+    // Apply filters
+    if (status) query.status = status;
+    if (leaveType) query.leaveType = leaveType;
+
+    const total = await Leave.countDocuments(query);
+    const leaves = await Leave.find(query)
+      .populate('reviewedBy', 'name email')
+      .sort(sort)
+      .skip((parseInt(page) - 1) * parseInt(limit))
+      .limit(parseInt(limit));
+
+    res.status(200).json({
+      success: true,
+      data: {
+        leaves,
+        pagination: {
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          pages: Math.ceil(total / parseInt(limit)),
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Cancel a pending leave request
+ * @route   PATCH /api/leaves/:id/cancel
+ * @access  Private (Employee â€” own leave only)
+ */
+const cancelLeave = async (req, res, next) => {
+  try {
+    const leave = await Leave.findById(req.params.id);
+
+    if (!leave) {
+      return res.status(404).json({
+        success: false,
+        message: 'Leave request not found',
+      });
+    }
+
+    // Ensure the leave belongs to the current user
+    if (leave.employee.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only cancel your own leave requests',
+      });
+    }
+
+    if (leave.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot cancel a leave that is already ${leave.status}`,
+      });
+    }
+
+    leave.status = 'cancelled';
+    await leave.save();
+
+    logger.info('Leave cancelled', {
+      userId: req.user._id,
+      leaveId: leave._id,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Leave request cancelled successfully',
+      data: { leave },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Get team leave requests (employees under this manager)
+ * @route   GET /api/leaves/team
+ * @access  Private (Manager)
+ */
+const getTeamLeaves = async (req, res, next) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      leaveType,
+      sort = '-createdAt',
+    } = req.query;
+
+    // Find all employees assigned to this manager
+    const teamMembers = await User.find({ manager: req.user._id }).select(
+      '_id'
+    );
+    const teamIds = teamMembers.map((m) => m._id);
+
+    const query = { employee: { $in: teamIds } };
+
+    if (status) query.status = status;
+    if (leaveType) query.leaveType = leaveType;
+
+    const total = await Leave.countDocuments(query);
+    const leaves = await Leave.find(query)
+      .populate('employee', 'name email department')
+      .populate('reviewedBy', 'name email')
+      .sort(sort)
+      .skip((parseInt(page) - 1) * parseInt(limit))
+      .limit(parseInt(limit));
+
+    res.status(200).json({
+      success: true,
+      data: {
+        leaves,
+        pagination: {
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          pages: Math.ceil(total / parseInt(limit)),
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Approve or reject a leave request
+ * @route   PATCH /api/leaves/:id/review
+ * @access  Private (Manager, Admin)
+ */
+const reviewLeave = async (req, res, next) => {
+  try {
+    const { status, reviewComment } = req.body;
+
+    const leave = await Leave.findById(req.params.id).populate(
+      'employee',
+      'name email leaveBalance'
+    );
+
+    if (!leave) {
+      return res.status(404).json({
+        success: false,
+        message: 'Leave request not found',
+      });
+    }
+
+    if (leave.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot review a leave that is already ${leave.status}`,
+      });
+    }
+
+    // If manager, verify the employee belongs to their team
+    if (req.user.role === 'manager') {
+      const employee = await User.findById(leave.employee._id);
+      if (
+        !employee.manager ||
+        employee.manager.toString() !== req.user._id.toString()
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: 'You can only review leave requests from your team members',
+        });
+      }
+    }
+
+    // Update leave status
+    leave.status = status;
+    leave.reviewedBy = req.user._id;
+    leave.reviewComment = reviewComment || '';
+    leave.reviewedAt = new Date();
+    await leave.save();
+
+    // If approved, deduct leave balance
+    if (status === 'approved') {
+      const duration =
+        Math.ceil(
+          (leave.endDate - leave.startDate) / (1000 * 60 * 60 * 24)
+        ) + 1;
+
+      await User.findByIdAndUpdate(leave.employee._id, {
+        $inc: { [`leaveBalance.${leave.leaveType}`]: -duration },
+      });
+    }
+
+    logger.info('Leave reviewed', {
+      reviewerId: req.user._id,
+      leaveId: leave._id,
+      status,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Leave request ${status} successfully`,
+      data: { leave },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Get all leave records (admin view)
+ * @route   GET /api/leaves
+ * @access  Private (Admin)
+ */
+const getAllLeaves = async (req, res, next) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      leaveType,
+      employee,
+      sort = '-createdAt',
+    } = req.query;
+
+    const query = {};
+
+    if (status) query.status = status;
+    if (leaveType) query.leaveType = leaveType;
+    if (employee) query.employee = employee;
+
+    const total = await Leave.countDocuments(query);
+    const leaves = await Leave.find(query)
+      .populate('employee', 'name email department')
+      .populate('reviewedBy', 'name email')
+      .sort(sort)
+      .skip((parseInt(page) - 1) * parseInt(limit))
+      .limit(parseInt(limit));
+
+    res.status(200).json({
+      success: true,
+      data: {
+        leaves,
+        pagination: {
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          pages: Math.ceil(total / parseInt(limit)),
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Get leave statistics for dashboard
+ * @route   GET /api/leaves/stats
+ * @access  Private (Admin, Manager)
+ */
+const getLeaveStats = async (req, res, next) => {
+  try {
+    let matchQuery = {};
+
+    // If manager, only show team stats
+    if (req.user.role === 'manager') {
+      const teamMembers = await User.find({ manager: req.user._id }).select(
+        '_id'
+      );
+      const teamIds = teamMembers.map((m) => m._id);
+      matchQuery = { employee: { $in: teamIds } };
+    }
+
+    // If employee, show own stats
+    if (req.user.role === 'employee') {
+      matchQuery = { employee: req.user._id };
+    }
+
+    const stats = await Leave.aggregate([
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const typeStats = await Leave.aggregate([
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: '$leaveType',
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Monthly trend (last 6 months)
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const monthlyTrend = await Leave.aggregate([
+      {
+        $match: {
+          ...matchQuery,
+          createdAt: { $gte: sixMonthsAgo },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' },
+          },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } },
+    ]);
+
+    // Format stats into an object
+    const formattedStats = {
+      total: 0,
+      pending: 0,
+      approved: 0,
+      rejected: 0,
+      cancelled: 0,
+    };
+
+    stats.forEach((s) => {
+      formattedStats[s._id] = s.count;
+      formattedStats.total += s.count;
+    });
+
+    const formattedTypeStats = {
+      casual: 0,
+      sick: 0,
+      paid: 0,
+      maternity: 0,
+    };
+
+    typeStats.forEach((s) => {
+      formattedTypeStats[s._id] = s.count;
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        statusStats: formattedStats,
+        typeStats: formattedTypeStats,
+        monthlyTrend,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  applyLeave,
+  getMyLeaves,
+  cancelLeave,
+  getTeamLeaves,
+  reviewLeave,
+  getAllLeaves,
+  getLeaveStats,
+  applyLeaveValidation,
+  reviewLeaveValidation,
+};
+
+
+======================================
+FILE: controllers\userController.js
+======================================
+
+const { body } = require('express-validator');
+const User = require('../models/User');
+const Leave = require('../models/Leave');
+const logger = require('../utils/logger');
+
+/**
+ * Validation rules for creating/updating users
+ */
+const createUserValidation = [
+  body('name').trim().notEmpty().withMessage('Name is required'),
+  body('email')
+    .trim()
+    .isEmail()
+    .withMessage('Please provide a valid email')
+    .normalizeEmail(),
+  body('password')
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters'),
+  body('role')
+    .isIn(['admin', 'manager', 'employee'])
+    .withMessage('Role must be admin, manager, or employee'),
+  body('department').optional().trim(),
+];
+
+const updateUserValidation = [
+  body('name').optional().trim().notEmpty().withMessage('Name cannot be empty'),
+  body('email')
+    .optional()
+    .trim()
+    .isEmail()
+    .withMessage('Please provide a valid email')
+    .normalizeEmail(),
+  body('role')
+    .optional()
+    .isIn(['admin', 'manager', 'employee'])
+    .withMessage('Role must be admin, manager, or employee'),
+  body('department').optional().trim(),
+];
+
+/**
+ * @desc    Get all users (paginated)
+ * @route   GET /api/users
+ * @access  Private (Admin)
+ */
+const getUsers = async (req, res, next) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      role,
+      department,
+      search,
+      sort = '-createdAt',
+    } = req.query;
+
+    const query = {};
+
+    if (role) query.role = role;
+    if (department) query.department = department;
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    const total = await User.countDocuments(query);
+    const users = await User.find(query)
+      .populate('manager', 'name email')
+      .sort(sort)
+      .skip((parseInt(page) - 1) * parseInt(limit))
+      .limit(parseInt(limit));
+
+    res.status(200).json({
+      success: true,
+      data: {
+        users,
+        pagination: {
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          pages: Math.ceil(total / parseInt(limit)),
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Get single user by ID
+ * @route   GET /api/users/:id
+ * @access  Private (Admin)
+ */
+const getUser = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.params.id).populate(
+      'manager',
+      'name email'
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    // Get user's leave stats
+    const leaveStats = await Leave.aggregate([
+      { $match: { employee: user._id } },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: { user, leaveStats },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Create new user (admin)
+ * @route   POST /api/users
+ * @access  Private (Admin)
+ */
+const createUser = async (req, res, next) => {
+  try {
+    const { name, email, password, role, department, manager } = req.body;
+
+    // Check if user exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'A user with this email already exists',
+      });
+    }
+
+    const user = await User.create({
+      name,
+      email,
+      password,
+      role,
+      department: department || 'General',
+      manager: manager || null,
+    });
+
+    logger.info('User created by admin', {
+      adminId: req.user._id,
+      newUserId: user._id,
+      role: user.role,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'User created successfully',
+      data: {
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          department: user.department,
+          leaveBalance: user.leaveBalance,
+          isActive: user.isActive,
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Update user details
+ * @route   PUT /api/users/:id
+ * @access  Private (Admin)
+ */
+const updateUser = async (req, res, next) => {
+  try {
+    const { name, email, role, department, manager, isActive, leaveBalance } =
+      req.body;
+
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    // Update fields
+    if (name) user.name = name;
+    if (email) user.email = email;
+    if (role) user.role = role;
+    if (department) user.department = department;
+    if (manager !== undefined) user.manager = manager || null;
+    if (isActive !== undefined) user.isActive = isActive;
+    if (leaveBalance) {
+      if (leaveBalance.casual !== undefined)
+        user.leaveBalance.casual = leaveBalance.casual;
+      if (leaveBalance.sick !== undefined)
+        user.leaveBalance.sick = leaveBalance.sick;
+      if (leaveBalance.paid !== undefined)
+        user.leaveBalance.paid = leaveBalance.paid;
+    }
+
+    await user.save();
+
+    logger.info('User updated by admin', {
+      adminId: req.user._id,
+      updatedUserId: user._id,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'User updated successfully',
+      data: { user },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Soft-delete user (deactivate)
+ * @route   DELETE /api/users/:id
+ * @access  Private (Admin)
+ */
+const deleteUser = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    // Prevent deleting yourself
+    if (user._id.toString() === req.user._id.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: 'You cannot deactivate your own account',
+      });
+    }
+
+    user.isActive = false;
+    await user.save();
+
+    logger.info('User deactivated by admin', {
+      adminId: req.user._id,
+      deactivatedUserId: user._id,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'User deactivated successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Get all managers (for dropdown assignment)
+ * @route   GET /api/users/managers
+ * @access  Private (Admin)
+ */
+const getManagers = async (req, res, next) => {
+  try {
+    const managers = await User.find({
+      role: 'manager',
+      isActive: true,
+    }).select('name email department');
+
+    res.status(200).json({
+      success: true,
+      data: { managers },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  getUsers,
+  getUser,
+  createUser,
+  updateUser,
+  deleteUser,
+  getManagers,
+  createUserValidation,
+  updateUserValidation,
+};
+
+
+======================================
+FILE: middleware\auth.js
+======================================
+
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
+const logger = require('../utils/logger');
+
+/**
+ * Authentication Middleware
+ * Verifies JWT token from Authorization header
+ * Attaches the decoded user document to req.user
+ */
+const protect = async (req, res, next) => {
+  let token;
+
+  // Extract token from Bearer header
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith('Bearer')
+  ) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      message: 'Not authorized â€” no token provided',
+    });
+  }
+
+  try {
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Attach user to request (exclude password)
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Not authorized â€” user not found',
+      });
+    }
+
+    if (!user.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: 'Account has been deactivated',
+      });
+    }
+
+    req.user = user;
+    next();
+  } catch (error) {
+    logger.error('Auth middleware error', { error: error.message });
+    return res.status(401).json({
+      success: false,
+      message: 'Not authorized â€” invalid token',
+    });
+  }
+};
+
+module.exports = { protect };
+
+
+======================================
+FILE: middleware\errorHandler.js
+======================================
+
+const logger = require('../utils/logger');
+
+/**
+ * Global error handling middleware
+ * Catches all errors passed via next(error) and sends consistent JSON responses
+ */
+const errorHandler = (err, req, res, _next) => {
+  logger.error('Unhandled error', {
+    message: err.message,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    path: req.originalUrl,
+    method: req.method,
+  });
+
+  let statusCode = err.statusCode || 500;
+  let message = err.message || 'Internal Server Error';
+
+  // Mongoose bad ObjectId
+  if (err.name === 'CastError') {
+    statusCode = 400;
+    message = 'Resource not found â€” invalid ID format';
+  }
+
+  // Mongoose duplicate key
+  if (err.code === 11000) {
+    const field = Object.keys(err.keyValue)[0];
+    statusCode = 400;
+    message = `Duplicate value for '${field}'. This ${field} already exists.`;
+  }
+
+  // Mongoose validation error
+  if (err.name === 'ValidationError') {
+    statusCode = 400;
+    const messages = Object.values(err.errors).map((val) => val.message);
+    message = messages.join('. ');
+  }
+
+  // JWT errors
+  if (err.name === 'JsonWebTokenError') {
+    statusCode = 401;
+    message = 'Invalid token';
+  }
+
+  if (err.name === 'TokenExpiredError') {
+    statusCode = 401;
+    message = 'Token has expired';
+  }
+
+  res.status(statusCode).json({
+    success: false,
+    message,
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+  });
+};
+
+module.exports = { errorHandler };
+
+
+======================================
+FILE: middleware\roleCheck.js
+======================================
+
+/**
+ * Role-Based Access Control Middleware
+ * Factory function that returns middleware checking user role
+ *
+ * @param  {...string} roles - Allowed roles (e.g., 'admin', 'manager')
+ * @returns {Function} Express middleware
+ *
+ * Usage: authorize('admin', 'manager')
+ */
+const authorize = (...roles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Not authorized â€” please log in',
+      });
+    }
+
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: `Role '${req.user.role}' is not authorized to access this resource`,
+      });
+    }
+
+    next();
+  };
+};
+
+module.exports = { authorize };
+
+
+======================================
+FILE: middleware\validate.js
+======================================
+
+const { validationResult } = require('express-validator');
+
+/**
+ * Validation Middleware
+ * Checks express-validator results and returns 400 if errors exist
+ * Use after express-validator check chains in route definitions
+ */
+const validate = (req, res, next) => {
+  const errors = validationResult(req);
+
+  if (!errors.isEmpty()) {
+    const extractedErrors = errors.array().map((err) => ({
+      field: err.path,
+      message: err.msg,
+    }));
+
+    return res.status(400).json({
+      success: false,
+      message: 'Validation failed',
+      errors: extractedErrors,
+    });
+  }
+
+  next();
+};
+
+module.exports = { validate };
+
+
+======================================
+FILE: models\Leave.js
+======================================
+
+const mongoose = require('mongoose');
+
+/**
+ * Leave Schema
+ * Tracks leave applications with type, dates, status, and review info
+ * References both the applying employee and the reviewing manager/admin
+ */
+const leaveSchema = new mongoose.Schema(
+  {
+    employee: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: [true, 'Employee reference is required'],
+      index: true,
+    },
+    employeeName: {
+      type: String,
+      required: [true, 'Employee name is required for database visibility'],
+    },
+    leaveType: {
+      type: String,
+      enum: {
+        values: ['casual', 'sick', 'paid', 'maternity'],
+        message: 'Leave type must be casual, sick, paid, or maternity',
+      },
+      required: [true, 'Leave type is required'],
+    },
+    startDate: {
+      type: Date,
+      required: [true, 'Start date is required'],
+    },
+    endDate: {
+      type: Date,
+      required: [true, 'End date is required'],
+      validate: {
+        validator: function (value) {
+          return value >= this.startDate;
+        },
+        message: 'End date must be on or after start date',
+      },
+    },
+    reason: {
+      type: String,
+      required: [true, 'Reason is required'],
+      trim: true,
+      maxlength: [500, 'Reason cannot exceed 500 characters'],
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected', 'cancelled'],
+      default: 'pending',
+      index: true,
+    },
+    reviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    reviewComment: {
+      type: String,
+      trim: true,
+      maxlength: [300, 'Review comment cannot exceed 300 characters'],
+      default: '',
+    },
+    reviewedAt: {
+      type: Date,
+      default: null,
+    },
+  },
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
+);
+
+/**
+ * Virtual: Calculate duration in days (inclusive)
+ */
+leaveSchema.virtual('duration').get(function () {
+  if (!this.startDate || !this.endDate) return 0;
+  const diffTime = Math.abs(this.endDate - this.startDate);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  return diffDays;
+});
+
+/**
+ * Compound indexes for efficient querying
+ */
+leaveSchema.index({ employee: 1, status: 1 });
+leaveSchema.index({ employee: 1, createdAt: -1 });
+leaveSchema.index({ status: 1, createdAt: -1 });
+
+module.exports = mongoose.model('Leave', leaveSchema);
+
+
+======================================
+FILE: models\User.js
+======================================
+
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+
+/**
+ * User Schema
+ * Supports three roles: admin, manager, employee
+ * Each employee can be assigned to a manager
+ * Leave balances are tracked per leave type
+ */
+const userSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: [true, 'Name is required'],
+      trim: true,
+      maxlength: [50, 'Name cannot exceed 50 characters'],
+    },
+    email: {
+      type: String,
+      required: [true, 'Email is required'],
+      unique: true,
+      lowercase: true,
+      trim: true,
+      match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email'],
+    },
+    password: {
+      type: String,
+      required: [true, 'Password is required'],
+      minlength: [6, 'Password must be at least 6 characters'],
+      select: false, // Don't return password by default
+    },
+    role: {
+      type: String,
+      enum: ['admin', 'manager', 'employee'],
+      default: 'employee',
+    },
+    department: {
+      type: String,
+      trim: true,
+      default: 'General',
+    },
+    gender: {
+      type: String,
+      enum: ['male', 'female', 'other'],
+      default: 'other',
+    },
+    manager: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    leaveBalance: {
+      casual: { type: Number, default: 12 },
+      sick: { type: Number, default: 10 },
+      paid: { type: Number, default: 15 },
+      maternity: { type: Number, default: 180 },
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    avatar: {
+      type: String,
+      default: '',
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+/**
+ * Hash password before saving
+ * Only runs when password is modified
+ */
+userSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) {
+    return next();
+  }
+  const salt = await bcrypt.genSalt(12);
+  this.password = await bcrypt.hash(this.password, salt);
+  next();
+});
+
+/**
+ * Compare entered password with stored hash
+ * @param {string} enteredPassword - Plain text password to compare
+ * @returns {boolean} Whether passwords match
+ */
+userSchema.methods.matchPassword = async function (enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
+};
+
+/**
+ * Get user's full leave balance summary
+ */
+userSchema.methods.getLeaveBalance = function () {
+  return {
+    casual: this.leaveBalance.casual,
+    sick: this.leaveBalance.sick,
+    paid: this.leaveBalance.paid,
+    maternity: this.leaveBalance.maternity,
+    total:
+      this.leaveBalance.casual +
+      this.leaveBalance.sick +
+      this.leaveBalance.paid +
+      (this.gender === 'female' ? this.leaveBalance.maternity : 0),
+  };
+};
+
+module.exports = mongoose.model('User', userSchema);
+
+
+======================================
+FILE: routes\authRoutes.js
+======================================
+
+const express = require('express');
+const router = express.Router();
+const { protect } = require('../middleware/auth');
+const { validate } = require('../middleware/validate');
+const {
+  register,
+  login,
+  getMe,
+  updatePassword,
+  registerValidation,
+  loginValidation,
+} = require('../controllers/authController');
+
+/**
+ * @route   POST /api/auth/register
+ * @desc    Register a new user
+ * @access  Public
+ */
+router.post('/register', registerValidation, validate, register);
+
+/**
+ * @route   POST /api/auth/login
+ * @desc    Login user & return JWT
+ * @access  Public
+ */
+router.post('/login', loginValidation, validate, login);
+
+/**
+ * @route   GET /api/auth/me
+ * @desc    Get current user profile
+ * @access  Private
+ */
+router.get('/me', protect, getMe);
+
+/**
+ * @route   PUT /api/auth/password
+ * @desc    Update password
+ * @access  Private
+ */
+router.put('/password', protect, updatePassword);
+
+module.exports = router;
+
+
+======================================
+FILE: routes\leaveRoutes.js
+======================================
+
+const express = require('express');
+const router = express.Router();
+const { protect } = require('../middleware/auth');
+const { authorize } = require('../middleware/roleCheck');
+const { validate } = require('../middleware/validate');
+const {
+  applyLeave,
+  getMyLeaves,
+  cancelLeave,
+  getTeamLeaves,
+  reviewLeave,
+  getAllLeaves,
+  getLeaveStats,
+  applyLeaveValidation,
+  reviewLeaveValidation,
+} = require('../controllers/leaveController');
+
+// All leave routes require authentication
+router.use(protect);
+
+/**
+ * @route   GET /api/leaves/stats
+ * @desc    Get leave statistics for dashboard
+ * @access  Private (All roles)
+ */
+router.get('/stats', getLeaveStats);
+
+/**
+ * @route   GET /api/leaves/my
+ * @desc    Get current user's leave history
+ * @access  Private (Employee)
+ */
+router.get('/my', getMyLeaves);
+
+/**
+ * @route   GET /api/leaves/team
+ * @desc    Get team leave requests
+ * @access  Private (Manager)
+ */
+router.get('/team', authorize('manager'), getTeamLeaves);
+
+/**
+ * @route   GET /api/leaves
+ * @desc    Get all leave records
+ * @access  Private (Admin)
+ */
+router.get('/', authorize('admin'), getAllLeaves);
+
+/**
+ * @route   POST /api/leaves
+ * @desc    Apply for leave
+ * @access  Private (Employee, Manager)
+ */
+router.post(
+  '/',
+  authorize('employee', 'manager'),
+  applyLeaveValidation,
+  validate,
+  applyLeave
+);
+
+/**
+ * @route   PATCH /api/leaves/:id/cancel
+ * @desc    Cancel a pending leave request
+ * @access  Private (Employee â€” own leave only)
+ */
+router.patch('/:id/cancel', cancelLeave);
+
+/**
+ * @route   PATCH /api/leaves/:id/review
+ * @desc    Approve or reject a leave request
+ * @access  Private (Manager, Admin)
+ */
+router.patch(
+  '/:id/review',
+  authorize('manager', 'admin'),
+  reviewLeaveValidation,
+  validate,
+  reviewLeave
+);
+
+module.exports = router;
+
+
+======================================
+FILE: routes\userRoutes.js
+======================================
+
+const express = require('express');
+const router = express.Router();
+const { protect } = require('../middleware/auth');
+const { authorize } = require('../middleware/roleCheck');
+const { validate } = require('../middleware/validate');
+const {
+  getUsers,
+  getUser,
+  createUser,
+  updateUser,
+  deleteUser,
+  getManagers,
+  createUserValidation,
+  updateUserValidation,
+} = require('../controllers/userController');
+
+// All user routes require authentication + admin role
+router.use(protect);
+router.use(authorize('admin'));
+
+/**
+ * @route   GET /api/users/managers
+ * @desc    Get all managers (for dropdown)
+ * @access  Private (Admin)
+ */
+router.get('/managers', getManagers);
+
+/**
+ * @route   GET /api/users
+ * @desc    Get all users (paginated)
+ * @access  Private (Admin)
+ */
+router.get('/', getUsers);
+
+/**
+ * @route   GET /api/users/:id
+ * @desc    Get single user
+ * @access  Private (Admin)
+ */
+router.get('/:id', getUser);
+
+/**
+ * @route   POST /api/users
+ * @desc    Create new user
+ * @access  Private (Admin)
+ */
+router.post('/', createUserValidation, validate, createUser);
+
+/**
+ * @route   PUT /api/users/:id
+ * @desc    Update user
+ * @access  Private (Admin)
+ */
+router.put('/:id', updateUserValidation, validate, updateUser);
+
+/**
+ * @route   DELETE /api/users/:id
+ * @desc    Soft-delete (deactivate) user
+ * @access  Private (Admin)
+ */
+router.delete('/:id', deleteUser);
+
+module.exports = router;
+
+
+======================================
+FILE: tests\auth.test.js
+======================================
+
+const request = require('supertest');
+const mongoose = require('mongoose');
+const { MongoMemoryServer } = require('mongodb-memory-server');
+const app = require('../server');
+const User = require('../models/User');
+
+let mongoServer;
+
+// Setup in-memory MongoDB for testing
+beforeAll(async () => {
+  mongoServer = await MongoMemoryServer.create();
+  const uri = mongoServer.getUri();
+  await mongoose.connect(uri);
+});
+
+afterAll(async () => {
+  await mongoose.disconnect();
+  await mongoServer.stop();
+});
+
+beforeEach(async () => {
+  await User.deleteMany({});
+});
+
+describe('Auth Endpoints', () => {
+  const testUser = {
+    name: 'Test User',
+    email: 'test@example.com',
+    password: 'password123',
+    department: 'Engineering',
+  };
+
+  describe('POST /api/auth/register', () => {
+    it('should register a new user successfully', async () => {
+      const res = await request(app)
+        .post('/api/auth/register')
+        .send(testUser);
+
+      expect(res.statusCode).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.user.email).toBe(testUser.email);
+      expect(res.body.data.user.role).toBe('employee');
+      expect(res.body.data.token).toBeDefined();
+      // Password should not be returned
+      expect(res.body.data.user.password).toBeUndefined();
+    });
+
+    it('should not register with duplicate email', async () => {
+      await request(app).post('/api/auth/register').send(testUser);
+
+      const res = await request(app)
+        .post('/api/auth/register')
+        .send(testUser);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('should fail with invalid email', async () => {
+      const res = await request(app)
+        .post('/api/auth/register')
+        .send({ ...testUser, email: 'notanemail' });
+
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('should fail with short password', async () => {
+      const res = await request(app)
+        .post('/api/auth/register')
+        .send({ ...testUser, password: '123' });
+
+      expect(res.statusCode).toBe(400);
+    });
+  });
+
+  describe('POST /api/auth/login', () => {
+    beforeEach(async () => {
+      await request(app).post('/api/auth/register').send(testUser);
+    });
+
+    it('should login with valid credentials', async () => {
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({ email: testUser.email, password: testUser.password });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.token).toBeDefined();
+      expect(res.body.data.user.email).toBe(testUser.email);
+    });
+
+    it('should reject invalid password', async () => {
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({ email: testUser.email, password: 'wrongpassword' });
+
+      expect(res.statusCode).toBe(401);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('should reject non-existent email', async () => {
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'noone@example.com', password: 'password123' });
+
+      expect(res.statusCode).toBe(401);
+    });
+  });
+
+  describe('GET /api/auth/me', () => {
+    it('should return current user when authenticated', async () => {
+      const registerRes = await request(app)
+        .post('/api/auth/register')
+        .send(testUser);
+
+      const token = registerRes.body.data.token;
+
+      const res = await request(app)
+        .get('/api/auth/me')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data.user.email).toBe(testUser.email);
+    });
+
+    it('should reject request without token', async () => {
+      const res = await request(app).get('/api/auth/me');
+
+      expect(res.statusCode).toBe(401);
+    });
+
+    it('should reject request with invalid token', async () => {
+      const res = await request(app)
+        .get('/api/auth/me')
+        .set('Authorization', 'Bearer invalidtoken123');
+
+      expect(res.statusCode).toBe(401);
+    });
+  });
+});
+
+
+======================================
+FILE: tests\leave.test.js
+======================================
+
+const request = require('supertest');
+const mongoose = require('mongoose');
+const { MongoMemoryServer } = require('mongodb-memory-server');
+const app = require('../server');
+const User = require('../models/User');
+const Leave = require('../models/Leave');
+
+let mongoServer;
+let employeeToken;
+let managerToken;
+let adminToken;
+let employeeId;
+let managerId;
+
+// Setup in-memory MongoDB
+beforeAll(async () => {
+  mongoServer = await MongoMemoryServer.create();
+  const uri = mongoServer.getUri();
+  await mongoose.connect(uri);
+});
+
+afterAll(async () => {
+  await mongoose.disconnect();
+  await mongoServer.stop();
+});
+
+beforeEach(async () => {
+  await User.deleteMany({});
+  await Leave.deleteMany({});
+
+  // Create admin
+  const adminRes = await request(app).post('/api/auth/register').send({
+    name: 'Admin User',
+    email: 'admin@test.com',
+    password: 'password123',
+  });
+  adminToken = adminRes.body.data.token;
+  // Manually set role to admin
+  await User.findByIdAndUpdate(adminRes.body.data.user._id, { role: 'admin' });
+
+  // Create manager
+  const managerRes = await request(app).post('/api/auth/register').send({
+    name: 'Manager User',
+    email: 'manager@test.com',
+    password: 'password123',
+  });
+  managerToken = managerRes.body.data.token;
+  managerId = managerRes.body.data.user._id;
+  await User.findByIdAndUpdate(managerId, { role: 'manager' });
+
+  // Re-login to get updated tokens with correct roles
+  const adminLogin = await request(app).post('/api/auth/login').send({
+    email: 'admin@test.com',
+    password: 'password123',
+  });
+  adminToken = adminLogin.body.data.token;
+
+  const managerLogin = await request(app).post('/api/auth/login').send({
+    email: 'manager@test.com',
+    password: 'password123',
+  });
+  managerToken = managerLogin.body.data.token;
+
+  // Create employee under manager
+  const empRes = await request(app).post('/api/auth/register').send({
+    name: 'Employee User',
+    email: 'employee@test.com',
+    password: 'password123',
+  });
+  employeeToken = empRes.body.data.token;
+  employeeId = empRes.body.data.user._id;
+  await User.findByIdAndUpdate(employeeId, { manager: managerId });
+});
+
+describe('Leave Endpoints', () => {
+  const leaveData = {
+    leaveType: 'casual',
+    startDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    endDate: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000).toISOString(),
+    reason: 'Family event',
+  };
+
+  describe('POST /api/leaves', () => {
+    it('should allow employee to apply for leave', async () => {
+      const res = await request(app)
+        .post('/api/leaves')
+        .set('Authorization', `Bearer ${employeeToken}`)
+        .send(leaveData);
+
+      expect(res.statusCode).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.leave.leaveType).toBe('casual');
+      expect(res.body.data.leave.status).toBe('pending');
+    });
+
+    it('should reject leave without authentication', async () => {
+      const res = await request(app).post('/api/leaves').send(leaveData);
+
+      expect(res.statusCode).toBe(401);
+    });
+
+    it('should reject leave with invalid leave type', async () => {
+      const res = await request(app)
+        .post('/api/leaves')
+        .set('Authorization', `Bearer ${employeeToken}`)
+        .send({ ...leaveData, leaveType: 'invalid' });
+
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('should reject admin from applying leave', async () => {
+      const res = await request(app)
+        .post('/api/leaves')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(leaveData);
+
+      expect(res.statusCode).toBe(403);
+    });
+  });
+
+  describe('GET /api/leaves/my', () => {
+    it('should return employee leave history', async () => {
+      // Apply for a leave first
+      await request(app)
+        .post('/api/leaves')
+        .set('Authorization', `Bearer ${employeeToken}`)
+        .send(leaveData);
+
+      const res = await request(app)
+        .get('/api/leaves/my')
+        .set('Authorization', `Bearer ${employeeToken}`);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data.leaves).toHaveLength(1);
+      expect(res.body.data.pagination).toBeDefined();
+    });
+  });
+
+  describe('PATCH /api/leaves/:id/cancel', () => {
+    it('should allow employee to cancel pending leave', async () => {
+      const applyRes = await request(app)
+        .post('/api/leaves')
+        .set('Authorization', `Bearer ${employeeToken}`)
+        .send(leaveData);
+
+      const leaveId = applyRes.body.data.leave._id;
+
+      const res = await request(app)
+        .patch(`/api/leaves/${leaveId}/cancel`)
+        .set('Authorization', `Bearer ${employeeToken}`);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data.leave.status).toBe('cancelled');
+    });
+  });
+
+  describe('PATCH /api/leaves/:id/review', () => {
+    it('should allow manager to approve leave', async () => {
+      const applyRes = await request(app)
+        .post('/api/leaves')
+        .set('Authorization', `Bearer ${employeeToken}`)
+        .send(leaveData);
+
+      const leaveId = applyRes.body.data.leave._id;
+
+      const res = await request(app)
+        .patch(`/api/leaves/${leaveId}/review`)
+        .set('Authorization', `Bearer ${managerToken}`)
+        .send({ status: 'approved', reviewComment: 'Enjoy your time off!' });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data.leave.status).toBe('approved');
+    });
+
+    it('should not allow employee to review leave', async () => {
+      const applyRes = await request(app)
+        .post('/api/leaves')
+        .set('Authorization', `Bearer ${employeeToken}`)
+        .send(leaveData);
+
+      const leaveId = applyRes.body.data.leave._id;
+
+      const res = await request(app)
+        .patch(`/api/leaves/${leaveId}/review`)
+        .set('Authorization', `Bearer ${employeeToken}`)
+        .send({ status: 'approved' });
+
+      expect(res.statusCode).toBe(403);
+    });
+  });
+
+  describe('GET /api/leaves/stats', () => {
+    it('should return leave statistics', async () => {
+      const res = await request(app)
+        .get('/api/leaves/stats')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data.statusStats).toBeDefined();
+      expect(res.body.data.typeStats).toBeDefined();
+    });
+  });
+});
+
+
+======================================
+FILE: utils\logger.js
+======================================
+
+/**
+ * Simple structured logger utility
+ * Provides consistent log formatting across the application
+ */
+const logger = {
+  info: (message, meta = {}) => {
+    console.log(
+      JSON.stringify({
+        level: 'INFO',
+        timestamp: new Date().toISOString(),
+        message,
+        ...meta,
+      })
+    );
+  },
+
+  warn: (message, meta = {}) => {
+    console.warn(
+      JSON.stringify({
+        level: 'WARN',
+        timestamp: new Date().toISOString(),
+        message,
+        ...meta,
+      })
+    );
+  },
+
+  error: (message, meta = {}) => {
+    console.error(
+      JSON.stringify({
+        level: 'ERROR',
+        timestamp: new Date().toISOString(),
+        message,
+        ...meta,
+      })
+    );
+  },
+
+  debug: (message, meta = {}) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(
+        JSON.stringify({
+          level: 'DEBUG',
+          timestamp: new Date().toISOString(),
+          message,
+          ...meta,
+        })
+      );
+    }
+  },
+};
+
+module.exports = logger;
+

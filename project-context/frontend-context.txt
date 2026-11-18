@@ -1,0 +1,6166 @@
+﻿--- FRONTEND PROJECT STRUCTURE ---
+
+index.html
+package-lock.json
+package.json
+vite.config.js
+public\vite.svg
+src\App.jsx
+src\index.css
+src\main.jsx
+src\api\axios.js
+src\components\LeaveCard.jsx
+src\components\ProtectedRoute.jsx
+src\components\StatsCard.jsx
+src\components\UserTable.jsx
+src\components\Layout\Layout.jsx
+src\components\Layout\Navbar.jsx
+src\components\Layout\Sidebar.jsx
+src\constants\departments.js
+src\context\AuthContext.jsx
+src\context\ThemeContext.jsx
+src\pages\AdminPanel.jsx
+src\pages\ApplyLeave.jsx
+src\pages\Dashboard.jsx
+src\pages\DatabaseViewer.jsx
+src\pages\LeaveHistory.jsx
+src\pages\Login.jsx
+src\pages\ManagerPanel.jsx
+src\pages\Register.jsx
+src\theme\theme.js
+
+--- FRONTEND FILE CONTENTS ---
+
+
+======================================
+FILE: index.html
+======================================
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Role-Based Leave Management System â€” Apply, track, and manage employee leave requests with ease." />
+    <title>LeaveFlow â€” Leave Management System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+
+
+======================================
+FILE: package.json
+======================================
+
+{
+  "name": "leave-management-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.13.0",
+    "@emotion/styled": "^11.13.0",
+    "@mui/icons-material": "^5.16.7",
+    "@mui/material": "^5.16.7",
+    "@mui/x-date-pickers": "^7.12.0",
+    "axios": "^1.7.4",
+    "dayjs": "^1.11.12",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.1",
+    "react-hot-toast": "^2.4.1",
+    "recharts": "^2.12.7"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.2"
+  }
+}
+
+
+======================================
+FILE: vite.config.js
+======================================
+
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+    },
+  },
+});
+
+
+======================================
+FILE: src\App.jsx
+======================================
+
+import { Routes, Route, Navigate } from 'react-router-dom';
+import Layout from './components/Layout/Layout';
+import ProtectedRoute from './components/ProtectedRoute';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Dashboard from './pages/Dashboard';
+import ApplyLeave from './pages/ApplyLeave';
+import LeaveHistory from './pages/LeaveHistory';
+import ManagerPanel from './pages/ManagerPanel';
+import AdminPanel from './pages/AdminPanel';
+import DatabaseViewer from './pages/DatabaseViewer';
+
+/**
+ * Main App Component
+ * Defines all routes with role-based protection
+ */
+const App = () => {
+  return (
+    <Routes>
+      {/* Public routes */}
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+
+      {/* Protected routes â€” wrapped in Layout */}
+      <Route
+        element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }
+      >
+        {/* Dashboard â€” all authenticated users */}
+        <Route path="/dashboard" element={<Dashboard />} />
+
+        {/* Employee & Manager routes */}
+        <Route
+          path="/apply-leave"
+          element={
+            <ProtectedRoute roles={['employee', 'manager']}>
+              <ApplyLeave />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/leave-history"
+          element={
+            <ProtectedRoute roles={['employee', 'manager']}>
+              <LeaveHistory />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Manager only */}
+        <Route
+          path="/manager"
+          element={
+            <ProtectedRoute roles={['manager']}>
+              <ManagerPanel />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Admin only */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute roles={['admin']}>
+              <AdminPanel />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/database"
+          element={
+            <ProtectedRoute roles={['admin']}>
+              <DatabaseViewer />
+            </ProtectedRoute>
+          }
+        />
+      </Route>
+
+      {/* Catch-all redirect */}
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
+  );
+};
+
+export default App;
+
+
+======================================
+FILE: src\index.css
+======================================
+
+/* ==============================
+   LeaveFlow â€” Premium Global Styles
+   ============================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* -------- Premium Scrollbar -------- */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(136, 146, 176, 0.2);
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(136, 146, 176, 0.35);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(136, 146, 176, 0.2) transparent;
+}
+
+/* -------- Selection -------- */
+::selection {
+  background: rgba(99, 102, 241, 0.25);
+  color: inherit;
+}
+
+/* -------- Smooth theme transitions -------- */
+body,
+body * {
+  transition: background-color 0.25s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.25s ease;
+}
+
+/* -------- Keyframe Animations -------- */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%      { transform: translateY(-8px); }
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(99, 102, 241, 0.2); }
+  50%      { box-shadow: 0 0 20px rgba(99, 102, 241, 0.4); }
+}
+
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* -------- Utility classes -------- */
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.animate-slide-in {
+  animation: slideInLeft 0.4s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.35s ease-out forwards;
+}
+
+/* -------- Glass effect helper -------- */
+.glass-panel {
+  background: rgba(13, 15, 26, 0.6);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(136, 146, 176, 0.08);
+}
+
+/* -------- Gradient text helper -------- */
+.gradient-text {
+  background: linear-gradient(135deg, #818cf8, #2dd4bf);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+
+======================================
+FILE: src\main.jsx
+======================================
+
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import App from './App';
+import { AuthProvider } from './context/AuthContext';
+import { ThemeContextProvider } from './context/ThemeContext';
+import './index.css';
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <BrowserRouter>
+      <ThemeContextProvider>
+        <AuthProvider>
+          <App />
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: '#1e293b',
+                color: '#e2e8f0',
+                border: '1px solid #334155',
+                borderRadius: '12px',
+                fontSize: '14px',
+              },
+              success: {
+                iconTheme: { primary: '#10b981', secondary: '#1e293b' },
+              },
+              error: {
+                iconTheme: { primary: '#ef4444', secondary: '#1e293b' },
+              },
+            }}
+          />
+        </AuthProvider>
+      </ThemeContextProvider>
+    </BrowserRouter>
+  </React.StrictMode>
+);
+
+
+======================================
+FILE: src\api\axios.js
+======================================
+
+import axios from 'axios';
+
+/**
+ * Configured Axios instance for API calls
+ * - Base URL from environment or proxy
+ * - Auto-attaches JWT token from localStorage
+ * - Handles 401 responses (auto-logout)
+ */
+const api = axios.create({
+  baseURL: '/api',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Request interceptor â€” attach token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response interceptor â€” handle 401
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      // Redirect to login if not already there
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default api;
+
+
+======================================
+FILE: src\components\LeaveCard.jsx
+======================================
+
+import {
+  Card,
+  CardContent,
+  Box,
+  Typography,
+  Chip,
+  IconButton,
+  Tooltip,
+} from '@mui/material';
+import {
+  Cancel as CancelIcon,
+  CalendarMonth,
+  AccessTime,
+  ChatBubbleOutline,
+  CheckCircleOutline,
+  HighlightOff,
+} from '@mui/icons-material';
+import dayjs from 'dayjs';
+import { DEPARTMENT_CONFIG } from '../constants/departments';
+
+/**
+ * Status color and label mapping
+ */
+const STATUS_CONFIG = {
+  pending: { color: 'warning', label: 'Pending', dot: '#fbbf24' },
+  approved: { color: 'success', label: 'Approved', dot: '#34d399' },
+  rejected: { color: 'error', label: 'Rejected', dot: '#f87171' },
+  cancelled: { color: 'default', label: 'Cancelled', dot: '#8892b0' },
+};
+
+const LEAVE_TYPE_COLORS = {
+  casual: '#818cf8',
+  sick: '#f87171',
+  paid: '#34d399',
+  maternity: '#e879f9',
+};
+
+const LEAVE_TYPE_EMOJI = {
+  casual: 'ðŸ–ï¸',
+  sick: 'ðŸ¥',
+  paid: 'ðŸ’°',
+  maternity: 'ðŸ‘¶',
+};
+
+/**
+ * Premium leave request card with status dot, hover effects, and review comment section
+ */
+const LeaveCard = ({ leave, onCancel, onReview, showEmployee = false }) => {
+  const statusConfig = STATUS_CONFIG[leave.status] || STATUS_CONFIG.pending;
+  const typeColor = LEAVE_TYPE_COLORS[leave.leaveType] || '#818cf8';
+  const typeEmoji = LEAVE_TYPE_EMOJI[leave.leaveType] || 'ðŸ“‹';
+  const duration = leave.duration ||
+    dayjs(leave.endDate).diff(dayjs(leave.startDate), 'day') + 1;
+
+  return (
+    <Card
+      sx={{
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        position: 'relative',
+        overflow: 'hidden',
+        '&:hover': {
+          transform: 'translateY(-4px)',
+          boxShadow: (theme) =>
+            theme.palette.mode === 'dark'
+              ? `0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px ${typeColor}15`
+              : `0 8px 28px rgba(0,0,0,0.08), 0 0 0 1px ${typeColor}15`,
+        },
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: 3,
+          background: `linear-gradient(90deg, ${typeColor}, ${typeColor}66)`,
+          opacity: 0.7,
+        },
+      }}
+    >
+      <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
+        {/* Header */}
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            mb: 1.5,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+            <Chip
+              label={`${typeEmoji} ${leave.leaveType}`}
+              size="small"
+              sx={{
+                bgcolor: `${typeColor}12`,
+                color: typeColor,
+                fontWeight: 700,
+                textTransform: 'capitalize',
+                fontSize: '0.73rem',
+                borderRadius: 2,
+                border: `1px solid ${typeColor}18`,
+              }}
+            />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Box
+                sx={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: '50%',
+                  bgcolor: statusConfig.dot,
+                  boxShadow: `0 0 6px ${statusConfig.dot}60`,
+                }}
+              />
+              <Typography
+                variant="caption"
+                sx={{
+                  fontWeight: 600,
+                  color: statusConfig.dot,
+                  fontSize: '0.7rem',
+                }}
+              >
+                {statusConfig.label}
+              </Typography>
+            </Box>
+          </Box>
+
+          {leave.status === 'pending' && (
+            <Box sx={{ display: 'flex', gap: 0.3 }}>
+              {onReview && (
+                <>
+                  <Tooltip title="Approve" arrow>
+                    <IconButton
+                      size="small"
+                      onClick={() => onReview(leave, 'approved')}
+                      sx={{
+                        color: 'success.main',
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          transform: 'scale(1.1)',
+                          bgcolor: 'rgba(52,211,153,0.1)',
+                        },
+                      }}
+                    >
+                      <CheckCircleOutline sx={{ fontSize: 19 }} />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Reject" arrow>
+                    <IconButton
+                      size="small"
+                      onClick={() => onReview(leave, 'rejected')}
+                      sx={{
+                        color: 'error.main',
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          transform: 'scale(1.1)',
+                          bgcolor: 'rgba(248,113,113,0.08)',
+                        },
+                      }}
+                    >
+                      <HighlightOff sx={{ fontSize: 19 }} />
+                    </IconButton>
+                  </Tooltip>
+                </>
+              )}
+              {onCancel && (
+                <Tooltip title="Cancel Request" arrow>
+                  <IconButton
+                    size="small"
+                    onClick={() => onCancel(leave._id)}
+                    sx={{
+                      color: 'text.secondary',
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        color: 'error.main',
+                        transform: 'scale(1.1)',
+                        bgcolor: 'rgba(248,113,113,0.08)',
+                      },
+                    }}
+                  >
+                    <CancelIcon sx={{ fontSize: 18 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Box>
+          )}
+        </Box>
+
+        {/* Employee name (if applicable) */}
+        {showEmployee && leave.employee && (
+          <Box sx={{ mb: 0.5 }}>
+            <Typography
+              variant="subtitle2"
+              sx={{ fontWeight: 700 }}
+            >
+              {leave.employee.name || 'Unknown'}
+            </Typography>
+            {leave.employee.department && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.2 }}>
+                <Typography component="span" sx={{ fontSize: '0.75rem' }}>
+                  {(DEPARTMENT_CONFIG[leave.employee.department] || {}).emoji || 'ðŸ¢'}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.7rem' }}
+                >
+                  {leave.employee.department}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        )}
+
+        {/* Reason */}
+        <Typography
+          variant="body2"
+          sx={{
+            color: 'text.secondary',
+            mb: 2,
+            lineHeight: 1.65,
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}
+        >
+          {leave.reason}
+        </Typography>
+
+        {/* Date and duration info */}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2.5,
+            flexWrap: 'wrap',
+            p: 1.5,
+            borderRadius: 2.5,
+            bgcolor: (theme) =>
+              theme.palette.mode === 'dark'
+                ? 'rgba(136,146,176,0.04)'
+                : 'rgba(0,0,0,0.02)',
+          }}
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.6,
+              color: 'text.secondary',
+            }}
+          >
+            <CalendarMonth sx={{ fontSize: 15, opacity: 0.7 }} />
+            <Typography variant="caption" sx={{ fontWeight: 500 }}>
+              {dayjs(leave.startDate).format('MMM D')} â€” {dayjs(leave.endDate).format('MMM D, YYYY')}
+            </Typography>
+          </Box>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.6,
+              color: 'text.secondary',
+            }}
+          >
+            <AccessTime sx={{ fontSize: 15, opacity: 0.7 }} />
+            <Typography variant="caption" sx={{ fontWeight: 600 }}>
+              {duration} day{duration > 1 ? 's' : ''}
+            </Typography>
+          </Box>
+        </Box>
+
+        {/* Review Comment */}
+        {leave.reviewComment && (
+          <Box
+            sx={{
+              mt: 2,
+              p: 1.5,
+              borderRadius: 2.5,
+              bgcolor: (theme) =>
+                theme.palette.mode === 'dark'
+                  ? 'rgba(136,146,176,0.04)'
+                  : 'rgba(0,0,0,0.02)',
+              borderLeft: '3px solid',
+              borderColor:
+                leave.status === 'approved' ? 'success.main' : 'error.main',
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+              <ChatBubbleOutline sx={{ fontSize: 13, color: 'text.secondary', opacity: 0.6 }} />
+              <Typography
+                variant="caption"
+                sx={{ color: 'text.secondary', fontWeight: 600, fontSize: '0.68rem' }}
+              >
+                Manager's Note
+              </Typography>
+            </Box>
+            <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.5 }}>
+              {leave.reviewComment}
+            </Typography>
+          </Box>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+export default LeaveCard;
+
+
+======================================
+FILE: src\components\ProtectedRoute.jsx
+======================================
+
+import { Navigate } from 'react-router-dom';
+import { Box, CircularProgress } from '@mui/material';
+import { useAuth } from '../context/AuthContext';
+
+/**
+ * Protected Route component
+ * Redirects to login if not authenticated
+ * Redirects to dashboard if user doesn't have the required role
+ *
+ * @param {ReactNode} children - The protected page content
+ * @param {string[]} roles - Array of roles allowed to access this route
+ */
+const ProtectedRoute = ({ children, roles = [] }) => {
+  const { isAuthenticated, loading, user } = useAuth();
+
+  // Show loading spinner while checking auth
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '100vh',
+          background: (theme) => theme.palette.background.default,
+        }}
+      >
+        <CircularProgress
+          size={48}
+          sx={{
+            color: 'primary.main',
+          }}
+        />
+      </Box>
+    );
+  }
+
+  // Not authenticated â†’ redirect to login
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Role check â€” if roles are specified, verify the user has one
+  if (roles.length > 0 && !roles.includes(user?.role)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+};
+
+export default ProtectedRoute;
+
+
+======================================
+FILE: src\components\StatsCard.jsx
+======================================
+
+import { Card, CardContent, Box, Typography } from '@mui/material';
+
+/**
+ * Premium animated statistics card with gradient accent bar and hover effects
+ */
+const StatsCard = ({ title, value, icon, color = '#818cf8', subtitle }) => {
+  return (
+    <Card
+      sx={{
+        position: 'relative',
+        overflow: 'hidden',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        cursor: 'default',
+        '&:hover': {
+          transform: 'translateY(-6px)',
+          boxShadow: `0 12px 32px ${color}18`,
+          '& .stats-icon-box': {
+            transform: 'scale(1.08) rotate(3deg)',
+          },
+          '&::before': {
+            height: 5,
+          },
+        },
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 3,
+          background: `linear-gradient(90deg, ${color}, ${color}88)`,
+          transition: 'height 0.3s ease',
+        },
+      }}
+    >
+      <CardContent sx={{ p: 3, '&:last-child': { pb: 3 } }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+          }}
+        >
+          <Box sx={{ flex: 1 }}>
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'text.secondary',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.07em',
+                fontSize: '0.68rem',
+                display: 'block',
+                mb: 0.8,
+              }}
+            >
+              {title}
+            </Typography>
+            <Typography
+              variant="h3"
+              sx={{
+                fontWeight: 800,
+                background: `linear-gradient(135deg, ${color}, ${color}99)`,
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                lineHeight: 1.1,
+                fontSize: '2rem',
+              }}
+            >
+              {value ?? 0}
+            </Typography>
+            {subtitle && (
+              <Typography
+                variant="caption"
+                sx={{
+                  color: 'text.secondary',
+                  mt: 0.5,
+                  display: 'block',
+                  fontSize: '0.7rem',
+                }}
+              >
+                {subtitle}
+              </Typography>
+            )}
+          </Box>
+
+          <Box
+            className="stats-icon-box"
+            sx={{
+              p: 1.5,
+              borderRadius: 3.5,
+              background: `linear-gradient(135deg, ${color}18, ${color}08)`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: color,
+              transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              border: `1px solid ${color}12`,
+            }}
+          >
+            {icon}
+          </Box>
+        </Box>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default StatsCard;
+
+
+======================================
+FILE: src\components\UserTable.jsx
+======================================
+
+import { useState } from 'react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Chip,
+  IconButton,
+  Tooltip,
+  Avatar,
+  Box,
+  Typography,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+} from '@mui/material';
+import { Edit, Delete, PersonOff } from '@mui/icons-material';
+import { DEPARTMENTS, DEPARTMENT_CONFIG, ROLE_CONFIG } from '../constants/departments';
+
+const ROLE_COLORS = {
+  admin: { bg: ROLE_CONFIG.admin.bg, color: ROLE_CONFIG.admin.color },
+  manager: { bg: ROLE_CONFIG.manager.bg, color: ROLE_CONFIG.manager.color },
+  employee: { bg: ROLE_CONFIG.employee.bg, color: ROLE_CONFIG.employee.color },
+};
+
+/**
+ * Admin user management table
+ * Supports inline editing, role changes, and user deactivation
+ */
+const UserTable = ({ users, managers, onUpdate, onDelete }) => {
+  const [editDialog, setEditDialog] = useState(false);
+  const [editUser, setEditUser] = useState(null);
+
+  const handleEdit = (user) => {
+    setEditUser({ ...user });
+    setEditDialog(true);
+  };
+
+  const handleSave = () => {
+    onUpdate(editUser._id, {
+      name: editUser.name,
+      email: editUser.email,
+      role: editUser.role,
+      department: editUser.department,
+      manager: editUser.manager?._id || editUser.manager || null,
+    });
+    setEditDialog(false);
+    setEditUser(null);
+  };
+
+  return (
+    <>
+      <TableContainer
+        component={Paper}
+        sx={{
+          borderRadius: 3,
+          border: '1px solid',
+          borderColor: 'divider',
+          boxShadow: 'none',
+        }}
+      >
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>User</TableCell>
+              <TableCell>Role</TableCell>
+              <TableCell>Department</TableCell>
+              <TableCell>Manager</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell align="right">Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {users.map((user) => {
+              const roleConfig = ROLE_COLORS[user.role] || ROLE_COLORS.employee;
+              return (
+                <TableRow
+                  key={user._id}
+                  sx={{
+                    transition: 'background 0.15s ease',
+                    '&:hover': { bgcolor: 'action.hover' },
+                    opacity: user.isActive ? 1 : 0.5,
+                  }}
+                >
+                  <TableCell>
+                    <Box
+                      sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}
+                    >
+                      <Avatar
+                        sx={{
+                          width: 34,
+                          height: 34,
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          bgcolor: roleConfig.color,
+                        }}
+                      >
+                        {user.name?.charAt(0)?.toUpperCase()}
+                      </Avatar>
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {user.name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {user.email}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={user.role}
+                      size="small"
+                      sx={{
+                        bgcolor: roleConfig.bg,
+                        color: roleConfig.color,
+                        fontWeight: 700,
+                        textTransform: 'capitalize',
+                      }}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                      <Typography component="span" sx={{ fontSize: '0.85rem' }}>
+                        {(DEPARTMENT_CONFIG[user.department] || {}).emoji || 'ðŸ¢'}
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {user.department}
+                      </Typography>
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" color="text.secondary">
+                      {user.manager?.name || 'â€”'}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={user.isActive ? 'Active' : 'Inactive'}
+                      size="small"
+                      color={user.isActive ? 'success' : 'default'}
+                      variant="outlined"
+                      sx={{ fontSize: '0.7rem' }}
+                    />
+                  </TableCell>
+                  <TableCell align="right">
+                    <Tooltip title="Edit">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleEdit(user)}
+                        sx={{ color: 'primary.main' }}
+                      >
+                        <Edit fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Deactivate">
+                      <IconButton
+                        size="small"
+                        onClick={() => onDelete(user._id)}
+                        disabled={!user.isActive}
+                        sx={{ color: 'error.main' }}
+                      >
+                        <PersonOff fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+            {users.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                  <Typography color="text.secondary">
+                    No users found
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      {/* Edit User Dialog */}
+      <Dialog
+        open={editDialog}
+        onClose={() => setEditDialog(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            border: '1px solid',
+            borderColor: 'divider',
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>Edit User</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: '16px !important' }}>
+          <TextField
+            label="Name"
+            fullWidth
+            value={editUser?.name || ''}
+            onChange={(e) =>
+              setEditUser({ ...editUser, name: e.target.value })
+            }
+          />
+          <TextField
+            label="Email"
+            fullWidth
+            value={editUser?.email || ''}
+            onChange={(e) =>
+              setEditUser({ ...editUser, email: e.target.value })
+            }
+          />
+          <FormControl fullWidth>
+            <InputLabel>Role</InputLabel>
+            <Select
+              value={editUser?.role || 'employee'}
+              label="Role"
+              onChange={(e) =>
+                setEditUser({ ...editUser, role: e.target.value })
+              }
+            >
+              <MenuItem value="employee">Employee</MenuItem>
+              <MenuItem value="manager">Manager</MenuItem>
+              <MenuItem value="admin">Admin</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl fullWidth>
+            <InputLabel>Department</InputLabel>
+            <Select
+              value={editUser?.department || ''}
+              label="Department"
+              onChange={(e) =>
+                setEditUser({ ...editUser, department: e.target.value })
+              }
+            >
+              {DEPARTMENTS.map((dept) => {
+                const cfg = DEPARTMENT_CONFIG[dept] || {};
+                return (
+                  <MenuItem key={dept} value={dept}>
+                    {cfg.emoji || 'ðŸ¢'} {dept}
+                  </MenuItem>
+                );
+              })}
+            </Select>
+          </FormControl>
+          <FormControl fullWidth>
+            <InputLabel>Manager</InputLabel>
+            <Select
+              value={editUser?.manager?._id || editUser?.manager || ''}
+              label="Manager"
+              onChange={(e) =>
+                setEditUser({ ...editUser, manager: e.target.value })
+              }
+            >
+              <MenuItem value="">None</MenuItem>
+              {managers?.map((m) => (
+                <MenuItem key={m._id} value={m._id}>
+                  {m.name} ({m.department})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5 }}>
+          <Button onClick={() => setEditDialog(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleSave}>
+            Save Changes
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+};
+
+export default UserTable;
+
+
+======================================
+FILE: src\components\Layout\Layout.jsx
+======================================
+
+import { useState } from 'react';
+import { Outlet } from 'react-router-dom';
+import { Box, useMediaQuery, useTheme } from '@mui/material';
+import Sidebar from './Sidebar';
+import Navbar from './Navbar';
+
+const DRAWER_WIDTH = 260;
+
+/**
+ * Main Layout Component
+ * App shell with collapsible sidebar and top navbar
+ * Wraps all authenticated pages via React Router <Outlet>
+ */
+const Layout = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
+
+  return (
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+      {/* Sidebar */}
+      <Sidebar
+        drawerWidth={DRAWER_WIDTH}
+        mobileOpen={mobileOpen}
+        onClose={handleDrawerToggle}
+        isMobile={isMobile}
+      />
+
+      {/* Main content area */}
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
+          ml: { md: `${DRAWER_WIDTH}px` },
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        {/* Top navbar */}
+        <Navbar onMenuToggle={handleDrawerToggle} />
+
+        {/* Page content */}
+        <Box
+          sx={{
+            flexGrow: 1,
+            p: { xs: 2, sm: 3 },
+            pt: { xs: 2, sm: 3 },
+            animation: 'fadeIn 0.4s ease-out',
+            '@keyframes fadeIn': {
+              from: { opacity: 0, transform: 'translateY(8px)' },
+              to: { opacity: 1, transform: 'translateY(0)' },
+            },
+          }}
+        >
+          <Outlet />
+        </Box>
+      </Box>
+    </Box>
+  );
+};
+
+export default Layout;
+
+
+======================================
+FILE: src\components\Layout\Navbar.jsx
+======================================
+
+import {
+  AppBar,
+  Toolbar,
+  IconButton,
+  Typography,
+  Box,
+  Tooltip,
+  Avatar,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  Divider,
+  Chip,
+} from '@mui/material';
+import {
+  Menu as MenuIcon,
+  DarkMode,
+  LightMode,
+  Logout,
+  Person,
+  NotificationsNoneOutlined,
+  Business,
+  Shield,
+} from '@mui/icons-material';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { useThemeMode } from '../../context/ThemeContext';
+import { ROLE_CONFIG, DEPARTMENT_CONFIG } from '../../constants/departments';
+
+/**
+ * Top navigation bar â€” frosted glass effect with refined user actions
+ */
+const Navbar = ({ onMenuToggle }) => {
+  const { user, logout } = useAuth();
+  const { mode, toggleTheme } = useThemeMode();
+  const navigate = useNavigate();
+  const [anchorEl, setAnchorEl] = useState(null);
+
+  const roleInfo = ROLE_CONFIG[user?.role] || ROLE_CONFIG.employee;
+  const deptInfo = DEPARTMENT_CONFIG[user?.department] || { emoji: 'ðŸ¢', color: '#64748b' };
+
+  const handleLogout = () => {
+    setAnchorEl(null);
+    logout();
+    navigate('/login');
+  };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
+  return (
+    <AppBar
+      position="sticky"
+      elevation={0}
+      sx={{
+        backdropFilter: 'blur(16px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(16px) saturate(180%)',
+        background: (theme) =>
+          theme.palette.mode === 'dark'
+            ? 'rgba(8, 10, 20, 0.75)'
+            : 'rgba(255, 255, 255, 0.8)',
+        borderBottom: '1px solid',
+        borderColor: 'divider',
+      }}
+    >
+      <Toolbar sx={{ gap: 1, py: 0.5 }}>
+        {/* Mobile menu toggle */}
+        <IconButton
+          onClick={onMenuToggle}
+          sx={{
+            display: { md: 'none' },
+            color: 'text.primary',
+            '&:hover': { transform: 'scale(1.05)' },
+            transition: 'transform 0.2s ease',
+          }}
+        >
+          <MenuIcon />
+        </IconButton>
+
+        {/* Greeting area */}
+        <Box sx={{ flexGrow: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.8 }}>
+            <Typography
+              variant="body1"
+              sx={{ fontWeight: 700, color: 'text.primary' }}
+            >
+              {getGreeting()}, {user?.name?.split(' ')[0]}
+            </Typography>
+            <Typography variant="body1" component="span">
+              ðŸ‘‹
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.2 }}>
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'text.secondary',
+                fontWeight: 500,
+                fontSize: '0.72rem',
+              }}
+            >
+              {new Date().toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric',
+              })}
+            </Typography>
+            <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 0.5 }}>
+              <Box
+                sx={{
+                  width: 3,
+                  height: 3,
+                  borderRadius: '50%',
+                  bgcolor: 'text.disabled',
+                }}
+              />
+              <Chip
+                label={`${deptInfo.emoji} ${user?.department || 'General'}`}
+                size="small"
+                sx={{
+                  height: 20,
+                  fontSize: '0.65rem',
+                  fontWeight: 600,
+                  bgcolor: `${deptInfo.color}10`,
+                  color: deptInfo.color,
+                  border: `1px solid ${deptInfo.color}15`,
+                  '& .MuiChip-label': { px: 0.8 },
+                }}
+              />
+            </Box>
+          </Box>
+        </Box>
+
+        {/* Action buttons */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          {/* Notification icon (decorative) */}
+          <Tooltip title="Notifications">
+            <IconButton
+              sx={{
+                color: 'text.secondary',
+                transition: 'all 0.2s ease',
+                '&:hover': { color: 'primary.main', transform: 'scale(1.05)' },
+              }}
+            >
+              <NotificationsNoneOutlined sx={{ fontSize: 22 }} />
+            </IconButton>
+          </Tooltip>
+
+          {/* Theme toggle */}
+          <Tooltip title={`Switch to ${mode === 'dark' ? 'light' : 'dark'} mode`}>
+            <IconButton
+              onClick={toggleTheme}
+              sx={{
+                color: 'text.secondary',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  transform: 'rotate(30deg) scale(1.05)',
+                  color: mode === 'dark' ? '#fbbf24' : '#6366f1',
+                },
+              }}
+            >
+              {mode === 'dark' ? (
+                <LightMode sx={{ fontSize: 22 }} />
+              ) : (
+                <DarkMode sx={{ fontSize: 22 }} />
+              )}
+            </IconButton>
+          </Tooltip>
+
+          {/* User avatar */}
+          <Tooltip title="Account settings">
+            <IconButton
+              onClick={(e) => setAnchorEl(e.currentTarget)}
+              sx={{
+                p: 0.5,
+                ml: 0.5,
+                transition: 'transform 0.2s ease',
+                '&:hover': { transform: 'scale(1.05)' },
+              }}
+            >
+              <Avatar
+                sx={{
+                  width: 38,
+                  height: 38,
+                  background: `linear-gradient(135deg, ${roleInfo.color}, ${roleInfo.color}88)`,
+                  fontSize: '0.85rem',
+                  fontWeight: 800,
+                  border: '2px solid',
+                  borderColor: 'divider',
+                }}
+              >
+                {user?.name?.charAt(0)?.toUpperCase()}
+              </Avatar>
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={() => setAnchorEl(null)}
+          transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+          anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+          PaperProps={{
+            sx: {
+              mt: 1.5,
+              minWidth: 260,
+              borderRadius: 3,
+              border: '1px solid',
+              borderColor: 'divider',
+              backdropFilter: 'blur(12px)',
+            },
+          }}
+        >
+          <Box sx={{ px: 2.5, py: 2 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+              {user?.name}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+              {user?.email}
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap' }}>
+              <Chip
+                icon={<Shield sx={{ fontSize: '14px !important' }} />}
+                label={roleInfo.label}
+                size="small"
+                sx={{
+                  height: 24,
+                  fontWeight: 700,
+                  fontSize: '0.68rem',
+                  bgcolor: roleInfo.bg,
+                  color: roleInfo.color,
+                  '& .MuiChip-icon': { color: roleInfo.color },
+                }}
+              />
+              <Chip
+                icon={<Business sx={{ fontSize: '14px !important' }} />}
+                label={user?.department || 'General'}
+                size="small"
+                sx={{
+                  height: 24,
+                  fontWeight: 600,
+                  fontSize: '0.68rem',
+                  bgcolor: `${deptInfo.color}10`,
+                  color: deptInfo.color,
+                  '& .MuiChip-icon': { color: deptInfo.color },
+                }}
+              />
+            </Box>
+          </Box>
+          <Divider />
+          <MenuItem
+            onClick={() => {
+              setAnchorEl(null);
+              navigate('/dashboard');
+            }}
+            sx={{ py: 1.2 }}
+          >
+            <ListItemIcon>
+              <Person fontSize="small" />
+            </ListItemIcon>
+            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+              Profile
+            </Typography>
+          </MenuItem>
+          <Divider sx={{ mx: 1 }} />
+          <MenuItem
+            onClick={handleLogout}
+            sx={{ color: 'error.main', py: 1.2 }}
+          >
+            <ListItemIcon>
+              <Logout fontSize="small" sx={{ color: 'error.main' }} />
+            </ListItemIcon>
+            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+              Sign Out
+            </Typography>
+          </MenuItem>
+        </Menu>
+      </Toolbar>
+    </AppBar>
+  );
+};
+
+export default Navbar;
+
+
+======================================
+FILE: src\components\Layout\Sidebar.jsx
+======================================
+
+import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  Drawer,
+  Box,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Typography,
+  Avatar,
+  Divider,
+  Chip,
+} from '@mui/material';
+import {
+  Dashboard as DashboardIcon,
+  EventNote as LeaveIcon,
+  History as HistoryIcon,
+  Group as TeamIcon,
+  AdminPanelSettings as AdminIcon,
+  CalendarMonth as CalendarIcon,
+  Business as DeptIcon,
+  Storage,
+} from '@mui/icons-material';
+import { useAuth } from '../../context/AuthContext';
+import { ROLE_CONFIG, DEPARTMENT_CONFIG } from '../../constants/departments';
+
+/**
+ * Sidebar navigation â€” premium design with glassmorphism and animated active states
+ */
+const Sidebar = ({ drawerWidth, mobileOpen, onClose, isMobile }) => {
+  const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Role-based menu items
+  const getMenuItems = () => {
+    const base = [
+      { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
+    ];
+
+    if (user?.role === 'employee' || user?.role === 'manager') {
+      base.push(
+        { text: 'Apply Leave', icon: <LeaveIcon />, path: '/apply-leave' },
+        { text: 'My Leaves', icon: <HistoryIcon />, path: '/leave-history' }
+      );
+    }
+
+    if (user?.role === 'manager') {
+      base.push({
+        text: 'Team Requests',
+        icon: <TeamIcon />,
+        path: '/manager',
+      });
+    }
+
+    if (user?.role === 'admin') {
+      base.push(
+        { text: 'Admin Panel', icon: <AdminIcon />, path: '/admin' },
+        { text: 'Database', icon: <Storage />, path: '/database' }
+      );
+    }
+
+    return base;
+  };
+
+  const menuItems = getMenuItems();
+
+  const roleInfo = ROLE_CONFIG[user?.role] || ROLE_CONFIG.employee;
+  const deptInfo = DEPARTMENT_CONFIG[user?.department] || { emoji: 'ðŸ¢', color: '#64748b' };
+
+  const drawerContent = (
+    <Box
+      sx={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        background: (theme) =>
+          theme.palette.mode === 'dark'
+            ? 'linear-gradient(180deg, #080a14 0%, #0d0f1a 100%)'
+            : 'linear-gradient(180deg, #f8f9fc 0%, #ffffff 100%)',
+      }}
+    >
+      {/* Brand */}
+      <Box
+        sx={{
+          p: 3,
+          pb: 2.5,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.5,
+        }}
+      >
+        <Box
+          sx={{
+            width: 42,
+            height: 42,
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, #6366f1, #14b8a6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 4px 16px rgba(99,102,241,0.3)',
+            flexShrink: 0,
+          }}
+        >
+          <CalendarIcon sx={{ fontSize: 22, color: '#ffffff' }} />
+        </Box>
+        <Box>
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 800,
+              background: 'linear-gradient(135deg, #818cf8, #2dd4bf)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              letterSpacing: '-0.02em',
+              lineHeight: 1.2,
+            }}
+          >
+            LeaveFlow
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              color: 'text.secondary',
+              fontSize: '0.6rem',
+              fontWeight: 500,
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+            }}
+          >
+            Management
+          </Typography>
+        </Box>
+      </Box>
+
+      <Divider sx={{ mx: 2.5, opacity: 0.4 }} />
+
+      {/* Role & Department Card */}
+      <Box
+        sx={{
+          mx: 2,
+          mt: 2,
+          mb: 1,
+          p: 2,
+          borderRadius: 3,
+          background: (theme) =>
+            theme.palette.mode === 'dark'
+              ? `linear-gradient(135deg, ${roleInfo.color}08, ${deptInfo.color}06)`
+              : `linear-gradient(135deg, ${roleInfo.color}06, ${deptInfo.color}04)`,
+          border: '1px solid',
+          borderColor: (theme) =>
+            theme.palette.mode === 'dark'
+              ? `${roleInfo.color}15`
+              : `${roleInfo.color}10`,
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+          <Typography component="span" sx={{ fontSize: '1rem' }}>{roleInfo.icon}</Typography>
+          <Chip
+            label={roleInfo.label}
+            size="small"
+            sx={{
+              height: 22,
+              fontSize: '0.68rem',
+              fontWeight: 700,
+              bgcolor: roleInfo.bg,
+              color: roleInfo.color,
+              letterSpacing: '0.02em',
+            }}
+          />
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
+          <DeptIcon sx={{ fontSize: 14, color: deptInfo.color, opacity: 0.8 }} />
+          <Typography
+            variant="caption"
+            sx={{
+              color: 'text.secondary',
+              fontWeight: 600,
+              fontSize: '0.7rem',
+            }}
+          >
+            {user?.department || 'General'}
+          </Typography>
+        </Box>
+      </Box>
+
+      {/* Navigation */}
+      <Box sx={{ px: 2, py: 1.5, flexGrow: 1 }}>
+        <Typography
+          variant="caption"
+          sx={{
+            color: 'text.secondary',
+            fontWeight: 700,
+            fontSize: '0.65rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            px: 1,
+            mb: 1,
+            display: 'block',
+          }}
+        >
+          Navigation
+        </Typography>
+        <List sx={{ py: 0 }}>
+          {menuItems.map((item, index) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <ListItem key={item.text} disablePadding sx={{ mb: 0.3 }}>
+                <ListItemButton
+                  onClick={() => {
+                    navigate(item.path);
+                    if (isMobile) onClose();
+                  }}
+                  sx={{
+                    borderRadius: 3,
+                    py: 1.2,
+                    px: 1.5,
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    animation: `slideInLeft 0.35s ease-out ${index * 0.06}s both`,
+                    ...(isActive
+                      ? {
+                          background: (theme) =>
+                            theme.palette.mode === 'dark'
+                              ? 'linear-gradient(135deg, rgba(129,140,248,0.12), rgba(45,212,191,0.06))'
+                              : 'linear-gradient(135deg, rgba(99,102,241,0.1), rgba(20,184,166,0.05))',
+                          '&::before': {
+                            content: '""',
+                            position: 'absolute',
+                            left: 0,
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            width: 3,
+                            height: '60%',
+                            borderRadius: '0 4px 4px 0',
+                            background: 'linear-gradient(180deg, #818cf8, #2dd4bf)',
+                          },
+                          '& .MuiListItemIcon-root': {
+                            color: 'primary.main',
+                          },
+                          '& .MuiListItemText-primary': {
+                            fontWeight: 700,
+                            color: 'primary.main',
+                          },
+                        }
+                      : {
+                          '&:hover': {
+                            background: (theme) =>
+                              theme.palette.mode === 'dark'
+                                ? 'rgba(136,146,176,0.06)'
+                                : 'rgba(0,0,0,0.03)',
+                            transform: 'translateX(2px)',
+                          },
+                        }),
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: 38, color: 'text.secondary' }}>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={item.text}
+                    primaryTypographyProps={{
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
+                    }}
+                  />
+                </ListItemButton>
+              </ListItem>
+            );
+          })}
+        </List>
+      </Box>
+
+      {/* User info */}
+      <Divider sx={{ mx: 2.5, opacity: 0.4 }} />
+      <Box
+        sx={{
+          p: 2.5,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.5,
+        }}
+      >
+        <Avatar
+          sx={{
+            width: 40,
+            height: 40,
+            background: `linear-gradient(135deg, ${roleInfo.color}, ${roleInfo.color}88)`,
+            fontSize: '0.9rem',
+            fontWeight: 800,
+            boxShadow: `0 4px 12px ${roleInfo.color}30`,
+          }}
+        >
+          {user?.name?.charAt(0)?.toUpperCase()}
+        </Avatar>
+        <Box sx={{ overflow: 'hidden', flex: 1 }}>
+          <Typography
+            variant="body2"
+            sx={{ fontWeight: 700, lineHeight: 1.3 }}
+            noWrap
+          >
+            {user?.name}
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              color: 'text.secondary',
+              fontSize: '0.65rem',
+              fontWeight: 500,
+            }}
+            noWrap
+          >
+            {user?.email}
+          </Typography>
+        </Box>
+      </Box>
+    </Box>
+  );
+
+  return (
+    <>
+      {/* Mobile drawer */}
+      {isMobile && (
+        <Drawer
+          variant="temporary"
+          open={mobileOpen}
+          onClose={onClose}
+          ModalProps={{ keepMounted: true }}
+          sx={{
+            '& .MuiDrawer-paper': {
+              width: drawerWidth,
+            },
+          }}
+        >
+          {drawerContent}
+        </Drawer>
+      )}
+
+      {/* Desktop drawer */}
+      {!isMobile && (
+        <Drawer
+          variant="permanent"
+          sx={{
+            width: drawerWidth,
+            flexShrink: 0,
+            '& .MuiDrawer-paper': {
+              width: drawerWidth,
+            },
+          }}
+          open
+        >
+          {drawerContent}
+        </Drawer>
+      )}
+    </>
+  );
+};
+
+export default Sidebar;
+
+
+======================================
+FILE: src\constants\departments.js
+======================================
+
+/**
+ * Predefined departments for a software company
+ * Used across registration, admin panel, and user management
+ */
+
+export const DEPARTMENTS = [
+  'Engineering',
+  'Quality Assurance',
+  'Product Management',
+  'UI/UX Design',
+  'DevOps',
+  'Data Science',
+  'Human Resources',
+  'Marketing',
+  'Sales',
+  'Finance',
+  'Customer Support',
+  'Administration',
+  'Legal',
+  'IT Infrastructure',
+];
+
+/**
+ * Department icons/emojis for visual display
+ */
+export const DEPARTMENT_CONFIG = {
+  'Engineering': { emoji: 'âš™ï¸', color: '#6366f1' },
+  'Quality Assurance': { emoji: 'ðŸ§ª', color: '#f59e0b' },
+  'Product Management': { emoji: 'ðŸ“‹', color: '#14b8a6' },
+  'UI/UX Design': { emoji: 'ðŸŽ¨', color: '#e879f9' },
+  'DevOps': { emoji: 'ðŸš€', color: '#f97316' },
+  'Data Science': { emoji: 'ðŸ“Š', color: '#3b82f6' },
+  'Human Resources': { emoji: 'ðŸ‘¥', color: '#ec4899' },
+  'Marketing': { emoji: 'ðŸ“¢', color: '#8b5cf6' },
+  'Sales': { emoji: 'ðŸ’¼', color: '#10b981' },
+  'Finance': { emoji: 'ðŸ’°', color: '#eab308' },
+  'Customer Support': { emoji: 'ðŸŽ§', color: '#06b6d4' },
+  'Administration': { emoji: 'ðŸ¢', color: '#64748b' },
+  'Legal': { emoji: 'âš–ï¸', color: '#78716c' },
+  'IT Infrastructure': { emoji: 'ðŸ–¥ï¸', color: '#0ea5e9' },
+};
+
+/**
+ * Role configuration for consistent styling across the app
+ */
+export const ROLE_CONFIG = {
+  admin: {
+    label: 'Administrator',
+    shortLabel: 'Admin',
+    color: '#ef4444',
+    bg: 'rgba(239,68,68,0.12)',
+    icon: 'ðŸ›¡ï¸',
+    description: 'Full system access',
+  },
+  manager: {
+    label: 'Manager',
+    shortLabel: 'Manager',
+    color: '#f59e0b',
+    bg: 'rgba(245,158,11,0.12)',
+    icon: 'ðŸ‘”',
+    description: 'Team management',
+  },
+  employee: {
+    label: 'Employee',
+    shortLabel: 'Employee',
+    color: '#10b981',
+    bg: 'rgba(16,185,129,0.12)',
+    icon: 'ðŸ‘¤',
+    description: 'Standard access',
+  },
+};
+
+
+======================================
+FILE: src\context\AuthContext.jsx
+======================================
+
+import { createContext, useContext, useReducer, useEffect } from 'react';
+import api from '../api/axios';
+
+const AuthContext = createContext();
+
+/**
+ * Auth state shape:
+ * - user: { _id, name, email, role, department, leaveBalance } | null
+ * - token: string | null
+ * - isAuthenticated: boolean
+ * - loading: boolean
+ */
+const initialState = {
+  user: JSON.parse(localStorage.getItem('user')) || null,
+  token: localStorage.getItem('token') || null,
+  isAuthenticated: !!localStorage.getItem('token'),
+  loading: true,
+};
+
+// Reducer
+const authReducer = (state, action) => {
+  switch (action.type) {
+    case 'LOGIN_SUCCESS':
+    case 'REGISTER_SUCCESS':
+      localStorage.setItem('token', action.payload.token);
+      localStorage.setItem('user', JSON.stringify(action.payload.user));
+      return {
+        ...state,
+        user: action.payload.user,
+        token: action.payload.token,
+        isAuthenticated: true,
+        loading: false,
+      };
+
+    case 'USER_LOADED':
+      localStorage.setItem('user', JSON.stringify(action.payload));
+      return {
+        ...state,
+        user: action.payload,
+        isAuthenticated: true,
+        loading: false,
+      };
+
+    case 'AUTH_ERROR':
+    case 'LOGOUT':
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      return {
+        ...state,
+        user: null,
+        token: null,
+        isAuthenticated: false,
+        loading: false,
+      };
+
+    case 'SET_LOADING':
+      return {
+        ...state,
+        loading: action.payload,
+      };
+
+    default:
+      return state;
+  }
+};
+
+// Provider component
+export const AuthProvider = ({ children }) => {
+  const [state, dispatch] = useReducer(authReducer, initialState);
+
+  // Load user on mount if token exists
+  useEffect(() => {
+    const loadUser = async () => {
+      if (state.token) {
+        try {
+          const res = await api.get('/auth/me');
+          dispatch({ type: 'USER_LOADED', payload: res.data.data.user });
+        } catch {
+          dispatch({ type: 'AUTH_ERROR' });
+        }
+      } else {
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
+    };
+    loadUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Login
+  const login = async (email, password) => {
+    const res = await api.post('/auth/login', { email, password });
+    dispatch({ type: 'LOGIN_SUCCESS', payload: res.data.data });
+    return res.data;
+  };
+
+  // Register
+  const register = async (userData) => {
+    const res = await api.post('/auth/register', userData);
+    dispatch({ type: 'REGISTER_SUCCESS', payload: res.data.data });
+    return res.data;
+  };
+
+  // Logout
+  const logout = () => {
+    dispatch({ type: 'LOGOUT' });
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user: state.user,
+        token: state.token,
+        isAuthenticated: state.isAuthenticated,
+        loading: state.loading,
+        login,
+        register,
+        logout,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+// Custom hook
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+
+
+======================================
+FILE: src\context\ThemeContext.jsx
+======================================
+
+import { createContext, useContext, useState, useMemo } from 'react';
+import { ThemeProvider, CssBaseline } from '@mui/material';
+import getTheme from '../theme/theme';
+
+const ThemeContext = createContext();
+
+/**
+ * Theme Context Provider
+ * Manages dark/light mode toggle with localStorage persistence
+ */
+export const ThemeContextProvider = ({ children }) => {
+  const [mode, setMode] = useState(
+    localStorage.getItem('themeMode') || 'dark'
+  );
+
+  const toggleTheme = () => {
+    const newMode = mode === 'dark' ? 'light' : 'dark';
+    setMode(newMode);
+    localStorage.setItem('themeMode', newMode);
+  };
+
+  const theme = useMemo(() => getTheme(mode), [mode]);
+
+  return (
+    <ThemeContext.Provider value={{ mode, toggleTheme }}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        {children}
+      </ThemeProvider>
+    </ThemeContext.Provider>
+  );
+};
+
+export const useThemeMode = () => {
+  const context = useContext(ThemeContext);
+  if (!context) {
+    throw new Error('useThemeMode must be used within ThemeContextProvider');
+  }
+  return context;
+};
+
+
+======================================
+FILE: src\pages\AdminPanel.jsx
+======================================
+
+import { useState, useEffect, useCallback } from 'react';
+import {
+  Box,
+  Typography,
+  Tabs,
+  Tab,
+  Button,
+  TextField,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Pagination,
+  LinearProgress,
+  Grid,
+  InputAdornment,
+  Chip,
+  Card,
+  CardContent,
+} from '@mui/material';
+import {
+  PersonAdd,
+  Search,
+  Group,
+  EventNote,
+  AdminPanelSettings,
+} from '@mui/icons-material';
+import api from '../api/axios';
+import UserTable from '../components/UserTable';
+import LeaveCard from '../components/LeaveCard';
+import StatsCard from '../components/StatsCard';
+import { DEPARTMENTS, DEPARTMENT_CONFIG } from '../constants/departments';
+import toast from 'react-hot-toast';
+
+/**
+ * Admin Panel â€” Tabbed interface for user management, all leaves, and analytics
+ */
+const AdminPanel = () => {
+  const [tab, setTab] = useState(0);
+
+  // Users state
+  const [users, setUsers] = useState([]);
+  const [managers, setManagers] = useState([]);
+  const [userPagination, setUserPagination] = useState({
+    total: 0,
+    page: 1,
+    pages: 1,
+  });
+  const [userSearch, setUserSearch] = useState('');
+  const [userLoading, setUserLoading] = useState(false);
+
+  // Leaves state
+  const [leaves, setLeaves] = useState([]);
+  const [leavePagination, setLeavePagination] = useState({
+    total: 0,
+    page: 1,
+    pages: 1,
+  });
+  const [leaveFilters, setLeaveFilters] = useState({
+    status: '',
+    leaveType: '',
+  });
+  const [leaveLoading, setLeaveLoading] = useState(false);
+
+  // Stats
+  const [stats, setStats] = useState(null);
+
+  // Create user dialog
+  const [createDialog, setCreateDialog] = useState(false);
+  const [newUser, setNewUser] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'employee',
+    department: '',
+    manager: '',
+  });
+  const [createLoading, setCreateLoading] = useState(false);
+
+  // Review leave dialog
+  const [reviewDialog, setReviewDialog] = useState(false);
+  const [selectedLeave, setSelectedLeave] = useState(null);
+  const [reviewAction, setReviewAction] = useState('');
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewLoading, setReviewLoading] = useState(false);
+
+  // Fetch users
+  const fetchUsers = useCallback(async () => {
+    setUserLoading(true);
+    try {
+      const params = { page: userPagination.page, limit: 10 };
+      if (userSearch) params.search = userSearch;
+
+      const res = await api.get('/users', { params });
+      setUsers(res.data.data.users);
+      setUserPagination((prev) => ({ ...prev, ...res.data.data.pagination }));
+    } catch (err) {
+      toast.error('Failed to load users');
+    } finally {
+      setUserLoading(false);
+    }
+  }, [userPagination.page, userSearch]);
+
+  // Fetch managers for dropdown
+  const fetchManagers = async () => {
+    try {
+      const res = await api.get('/users/managers');
+      setManagers(res.data.data.managers);
+    } catch {
+      /* silent */
+    }
+  };
+
+  // Fetch all leaves
+  const fetchLeaves = useCallback(async () => {
+    setLeaveLoading(true);
+    try {
+      const params = { page: leavePagination.page, limit: 12 };
+      if (leaveFilters.status) params.status = leaveFilters.status;
+      if (leaveFilters.leaveType) params.leaveType = leaveFilters.leaveType;
+
+      const res = await api.get('/leaves', { params });
+      setLeaves(res.data.data.leaves);
+      setLeavePagination((prev) => ({
+        ...prev,
+        ...res.data.data.pagination,
+      }));
+    } catch (err) {
+      toast.error('Failed to load leaves');
+    } finally {
+      setLeaveLoading(false);
+    }
+  }, [leavePagination.page, leaveFilters]);
+
+  // Fetch stats
+  const fetchStats = async () => {
+    try {
+      const res = await api.get('/leaves/stats');
+      setStats(res.data.data);
+    } catch {
+      /* silent */
+    }
+  };
+
+  useEffect(() => {
+    fetchManagers();
+    fetchStats();
+  }, []);
+
+  useEffect(() => {
+    if (tab === 0) fetchUsers();
+  }, [tab, fetchUsers]);
+
+  useEffect(() => {
+    if (tab === 1) fetchLeaves();
+  }, [tab, fetchLeaves]);
+
+  // Create user
+  const handleCreateUser = async () => {
+    setCreateLoading(true);
+    try {
+      await api.post('/users', {
+        ...newUser,
+        manager: newUser.manager || undefined,
+      });
+      toast.success('User created successfully');
+      setCreateDialog(false);
+      setNewUser({
+        name: '',
+        email: '',
+        password: '',
+        role: 'employee',
+        department: '',
+        manager: '',
+      });
+      fetchUsers();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to create user');
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
+  // Update user
+  const handleUpdateUser = async (userId, data) => {
+    try {
+      await api.put(`/users/${userId}`, data);
+      toast.success('User updated successfully');
+      fetchUsers();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update user');
+    }
+  };
+
+  // Delete (deactivate) user
+  const handleDeleteUser = async (userId) => {
+    try {
+      await api.delete(`/users/${userId}`);
+      toast.success('User deactivated');
+      fetchUsers();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to deactivate user');
+    }
+  };
+
+  // Open review dialog
+  const openReviewDialog = (leave, action) => {
+    setSelectedLeave(leave);
+    setReviewAction(action);
+    setReviewComment('');
+    setReviewDialog(true);
+  };
+
+  // Submit review
+  const handleReviewLeave = async () => {
+    setReviewLoading(true);
+    try {
+      await api.patch(`/leaves/${selectedLeave._id}/review`, {
+        status: reviewAction,
+        reviewComment: reviewComment,
+      });
+      toast.success(`Leave ${reviewAction} successfully`);
+      setReviewDialog(false);
+      fetchLeaves();
+      fetchStats();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to review leave');
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
+  const statusStats = stats?.statusStats || {};
+
+  return (
+    <Box>
+      {/* Header */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+        <AdminPanelSettings
+          sx={{ fontSize: 32, color: 'primary.main' }}
+        />
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 800 }}>
+            Admin Panel
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            Manage users, leaves, and view organization analytics
+          </Typography>
+        </Box>
+      </Box>
+
+      {/* Quick Stats */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={6} sm={3}>
+          <StatsCard
+            title="Total Users"
+            value={userPagination.total || users.length}
+            icon={<Group />}
+            color="#6366f1"
+          />
+        </Grid>
+        <Grid item xs={6} sm={3}>
+          <StatsCard
+            title="Total Leaves"
+            value={statusStats.total || 0}
+            icon={<EventNote />}
+            color="#14b8a6"
+          />
+        </Grid>
+        <Grid item xs={6} sm={3}>
+          <StatsCard
+            title="Pending"
+            value={statusStats.pending || 0}
+            icon={<EventNote />}
+            color="#f59e0b"
+          />
+        </Grid>
+        <Grid item xs={6} sm={3}>
+          <StatsCard
+            title="Approved"
+            value={statusStats.approved || 0}
+            icon={<EventNote />}
+            color="#10b981"
+          />
+        </Grid>
+      </Grid>
+
+      {/* Tabs */}
+      <Card sx={{ mb: 3 }}>
+        <Tabs
+          value={tab}
+          onChange={(_, v) => setTab(v)}
+          sx={{
+            px: 2,
+            '& .MuiTab-root': {
+              fontWeight: 600,
+              textTransform: 'none',
+              fontSize: '0.9rem',
+            },
+          }}
+        >
+          <Tab label="User Management" />
+          <Tab label="All Leave Records" />
+        </Tabs>
+      </Card>
+
+      {/* Tab: User Management */}
+      {tab === 0 && (
+        <Box>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              mb: 2.5,
+              flexWrap: 'wrap',
+              gap: 2,
+            }}
+          >
+            <TextField
+              size="small"
+              placeholder="Search users..."
+              value={userSearch}
+              onChange={(e) => {
+                setUserSearch(e.target.value);
+                setUserPagination((prev) => ({ ...prev, page: 1 }));
+              }}
+              sx={{ minWidth: 260 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search sx={{ color: 'text.secondary', fontSize: 20 }} />
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <Button
+              variant="contained"
+              startIcon={<PersonAdd />}
+              onClick={() => setCreateDialog(true)}
+            >
+              Create User
+            </Button>
+          </Box>
+
+          {userLoading && (
+            <LinearProgress sx={{ mb: 2, borderRadius: 2 }} />
+          )}
+
+          <UserTable
+            users={users}
+            managers={managers}
+            onUpdate={handleUpdateUser}
+            onDelete={handleDeleteUser}
+          />
+
+          {userPagination.pages > 1 && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+              <Pagination
+                count={userPagination.pages}
+                page={userPagination.page}
+                onChange={(_, page) =>
+                  setUserPagination((prev) => ({ ...prev, page }))
+                }
+                color="primary"
+                shape="rounded"
+              />
+            </Box>
+          )}
+        </Box>
+      )}
+
+      {/* Tab: All Leaves */}
+      {tab === 1 && (
+        <Box>
+          <Box
+            sx={{
+              display: 'flex',
+              gap: 2,
+              mb: 2.5,
+              flexWrap: 'wrap',
+              alignItems: 'center',
+            }}
+          >
+            <FormControl size="small" sx={{ minWidth: 140 }}>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={leaveFilters.status}
+                label="Status"
+                onChange={(e) => {
+                  setLeaveFilters((prev) => ({
+                    ...prev,
+                    status: e.target.value,
+                  }));
+                  setLeavePagination((prev) => ({ ...prev, page: 1 }));
+                }}
+              >
+                <MenuItem value="">All</MenuItem>
+                <MenuItem value="pending">Pending</MenuItem>
+                <MenuItem value="approved">Approved</MenuItem>
+                <MenuItem value="rejected">Rejected</MenuItem>
+                <MenuItem value="cancelled">Cancelled</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 140 }}>
+              <InputLabel>Type</InputLabel>
+              <Select
+                value={leaveFilters.leaveType}
+                label="Type"
+                onChange={(e) => {
+                  setLeaveFilters((prev) => ({
+                    ...prev,
+                    leaveType: e.target.value,
+                  }));
+                  setLeavePagination((prev) => ({ ...prev, page: 1 }));
+                }}
+              >
+                <MenuItem value="">All</MenuItem>
+                <MenuItem value="casual">Casual</MenuItem>
+                <MenuItem value="sick">Sick</MenuItem>
+                <MenuItem value="paid">Paid</MenuItem>
+                <MenuItem value="maternity">Maternity</MenuItem>
+              </Select>
+            </FormControl>
+            <Typography
+              variant="caption"
+              sx={{ color: 'text.secondary', ml: 'auto' }}
+            >
+              {leavePagination.total} total records
+            </Typography>
+          </Box>
+
+          {leaveLoading && (
+            <LinearProgress sx={{ mb: 2, borderRadius: 2 }} />
+          )}
+
+          {!leaveLoading && leaves.length === 0 ? (
+            <Box
+              sx={{
+                textAlign: 'center',
+                py: 8,
+                color: 'text.secondary',
+              }}
+            >
+              <Typography variant="h6">No leave records found</Typography>
+            </Box>
+          ) : (
+            <Grid container spacing={2.5}>
+              {leaves.map((leave, index) => (
+                <Grid
+                  item
+                  xs={12}
+                  sm={6}
+                  lg={4}
+                  key={leave._id}
+                  sx={{
+                    animation: `fadeInUp 0.3s ease-out ${index * 0.04}s both`,
+                    '@keyframes fadeInUp': {
+                      from: { opacity: 0, transform: 'translateY(10px)' },
+                      to: { opacity: 1, transform: 'translateY(0)' },
+                    },
+                  }}
+                >
+                  <LeaveCard leave={leave} showEmployee onReview={openReviewDialog} />
+                </Grid>
+              ))}
+            </Grid>
+          )}
+
+          {leavePagination.pages > 1 && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+              <Pagination
+                count={leavePagination.pages}
+                page={leavePagination.page}
+                onChange={(_, page) =>
+                  setLeavePagination((prev) => ({ ...prev, page }))
+                }
+                color="primary"
+                shape="rounded"
+              />
+            </Box>
+          )}
+        </Box>
+      )}
+
+      {/* Review Leave Dialog */}
+      <Dialog
+        open={reviewDialog}
+        onClose={() => setReviewDialog(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            border: '1px solid',
+            borderColor: 'divider',
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          {reviewAction === 'approved' ? 'âœ… Approve' : 'âŒ Reject'} Leave Request
+        </DialogTitle>
+        <DialogContent>
+          {selectedLeave && (
+            <Box sx={{ mb: 2, mt: 1 }}>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                <strong>{selectedLeave.employee?.name}</strong> is requesting{' '}
+                <strong>{selectedLeave.leaveType}</strong> leave
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+                Reason: {selectedLeave.reason}
+              </Typography>
+            </Box>
+          )}
+          <TextField
+            label="Comment (optional)"
+            multiline
+            rows={3}
+            fullWidth
+            value={reviewComment}
+            onChange={(e) => setReviewComment(e.target.value)}
+            placeholder="Add a comment for the employee..."
+            inputProps={{ maxLength: 300 }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5 }}>
+          <Button onClick={() => setReviewDialog(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleReviewLeave}
+            disabled={reviewLoading}
+            color={reviewAction === 'approved' ? 'success' : 'error'}
+          >
+            {reviewLoading
+              ? 'Processing...'
+              : reviewAction === 'approved'
+              ? 'Approve'
+              : 'Reject'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Create User Dialog */}
+      <Dialog
+        open={createDialog}
+        onClose={() => setCreateDialog(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            border: '1px solid',
+            borderColor: 'divider',
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>Create New User</DialogTitle>
+        <DialogContent
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2.5,
+            pt: '16px !important',
+          }}
+        >
+          <TextField
+            label="Full Name"
+            fullWidth
+            required
+            value={newUser.name}
+            onChange={(e) =>
+              setNewUser({ ...newUser, name: e.target.value })
+            }
+          />
+          <TextField
+            label="Email"
+            type="email"
+            fullWidth
+            required
+            value={newUser.email}
+            onChange={(e) =>
+              setNewUser({ ...newUser, email: e.target.value })
+            }
+          />
+          <TextField
+            label="Password"
+            type="password"
+            fullWidth
+            required
+            value={newUser.password}
+            onChange={(e) =>
+              setNewUser({ ...newUser, password: e.target.value })
+            }
+          />
+          <FormControl fullWidth>
+            <InputLabel>Role</InputLabel>
+            <Select
+              value={newUser.role}
+              label="Role"
+              onChange={(e) =>
+                setNewUser({ ...newUser, role: e.target.value })
+              }
+            >
+              <MenuItem value="employee">Employee</MenuItem>
+              <MenuItem value="manager">Manager</MenuItem>
+              <MenuItem value="admin">Admin</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl fullWidth>
+            <InputLabel>Gender</InputLabel>
+            <Select
+              value={newUser.gender || 'other'}
+              label="Gender"
+              onChange={(e) =>
+                setNewUser({ ...newUser, gender: e.target.value })
+              }
+            >
+              <MenuItem value="male">Male</MenuItem>
+              <MenuItem value="female">Female</MenuItem>
+              <MenuItem value="other">Other</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl fullWidth>
+             <InputLabel>Department</InputLabel>
+             <Select
+               value={newUser.department}
+               label="Department"
+               onChange={(e) =>
+                 setNewUser({ ...newUser, department: e.target.value })
+               }
+             >
+               {DEPARTMENTS.map((dept) => {
+                 const cfg = DEPARTMENT_CONFIG[dept] || {};
+                 return (
+                   <MenuItem key={dept} value={dept}>
+                     {cfg.emoji || 'ðŸ¢'} {dept}
+                   </MenuItem>
+                 );
+               })}
+             </Select>
+           </FormControl>
+          {newUser.role === 'employee' && (
+            <FormControl fullWidth>
+              <InputLabel>Assign Manager</InputLabel>
+              <Select
+                value={newUser.manager}
+                label="Assign Manager"
+                onChange={(e) =>
+                  setNewUser({ ...newUser, manager: e.target.value })
+                }
+              >
+                <MenuItem value="">None</MenuItem>
+                {managers.map((m) => (
+                  <MenuItem key={m._id} value={m._id}>
+                    {m.name} ({m.department})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5 }}>
+          <Button onClick={() => setCreateDialog(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleCreateUser}
+            disabled={
+              createLoading || !newUser.name || !newUser.email || !newUser.password
+            }
+          >
+            {createLoading ? 'Creating...' : 'Create User'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+};
+
+export default AdminPanel;
+
+
+======================================
+FILE: src\pages\ApplyLeave.jsx
+======================================
+
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Box,
+  Card,
+  CardContent,
+  TextField,
+  Button,
+  Typography,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Grid,
+  CircularProgress,
+  Alert,
+} from '@mui/material';
+import { Send, EventNote } from '@mui/icons-material';
+import { useAuth } from '../context/AuthContext';
+import api from '../api/axios';
+import toast from 'react-hot-toast';
+
+/**
+ * Leave Application Form
+ * Allows employees and managers to submit leave requests
+ */
+const ApplyLeave = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [formData, setFormData] = useState({
+    leaveType: '',
+    startDate: '',
+    endDate: '',
+    reason: '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setError('');
+  };
+
+  // Calculate duration
+  const getDuration = () => {
+    if (!formData.startDate || !formData.endDate) return 0;
+    const start = new Date(formData.startDate);
+    const end = new Date(formData.endDate);
+    if (end < start) return 0;
+    return Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+  };
+
+  const duration = getDuration();
+
+  // Get available balance for selected type
+  const getBalance = () => {
+    if (!formData.leaveType || !user?.leaveBalance) return null;
+    return user.leaveBalance[formData.leaveType];
+  };
+
+  const balance = getBalance();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    if (new Date(formData.endDate) < new Date(formData.startDate)) {
+      setError('End date must be on or after start date');
+      setLoading(false);
+      return;
+    }
+
+    if (balance !== null && duration > balance) {
+      setError(
+        `Insufficient ${formData.leaveType} leave balance. Available: ${balance}, Requested: ${duration}`
+      );
+      setLoading(false);
+      return;
+    }
+
+    try {
+      await api.post('/leaves', formData);
+      toast.success('Leave application submitted!');
+      navigate('/leave-history');
+    } catch (err) {
+      const msg =
+        err.response?.data?.message || 'Failed to submit leave request';
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Box>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>
+          Apply for Leave
+        </Typography>
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+          Fill in the details below to submit a leave request
+        </Typography>
+      </Box>
+
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={8}>
+          <Card>
+            <CardContent sx={{ p: 4 }}>
+              {error && (
+                <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
+                  {error}
+                </Alert>
+              )}
+
+              <form onSubmit={handleSubmit}>
+                <FormControl fullWidth sx={{ mb: 3 }}>
+                  <InputLabel id="leave-type-label">Leave Type</InputLabel>
+                  <Select
+                    id="leave-type-select"
+                    labelId="leave-type-label"
+                    name="leaveType"
+                    value={formData.leaveType}
+                    label="Leave Type"
+                    onChange={handleChange}
+                    required
+                  >
+                    <MenuItem value="casual">
+                      ðŸ–ï¸ Casual Leave (Balance: {user?.leaveBalance?.casual ?? 0})
+                    </MenuItem>
+                    <MenuItem value="sick">
+                      ðŸ¥ Sick Leave (Balance: {user?.leaveBalance?.sick ?? 0})
+                    </MenuItem>
+                    <MenuItem value="paid">
+                      ðŸ’° Paid Leave (Balance: {user?.leaveBalance?.paid ?? 0})
+                    </MenuItem>
+                    {user?.gender === 'female' && (
+                      <MenuItem value="maternity">
+                        ðŸ‘¶ Maternity Leave (Balance: {user?.leaveBalance?.maternity ?? 0})
+                      </MenuItem>
+                    )}
+                  </Select>
+                </FormControl>
+
+                <Grid container spacing={2} sx={{ mb: 3 }}>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      id="start-date"
+                      name="startDate"
+                      label="Start Date"
+                      type="date"
+                      fullWidth
+                      required
+                      value={formData.startDate}
+                      onChange={handleChange}
+                      InputLabelProps={{ shrink: true }}
+                      inputProps={{
+                        min: new Date().toISOString().split('T')[0],
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      id="end-date"
+                      name="endDate"
+                      label="End Date"
+                      type="date"
+                      fullWidth
+                      required
+                      value={formData.endDate}
+                      onChange={handleChange}
+                      InputLabelProps={{ shrink: true }}
+                      inputProps={{
+                        min:
+                          formData.startDate ||
+                          new Date().toISOString().split('T')[0],
+                      }}
+                    />
+                  </Grid>
+                </Grid>
+
+                <TextField
+                  id="leave-reason"
+                  name="reason"
+                  label="Reason for Leave"
+                  multiline
+                  rows={4}
+                  fullWidth
+                  required
+                  value={formData.reason}
+                  onChange={handleChange}
+                  placeholder="Please provide a brief reason for your leave request..."
+                  sx={{ mb: 3 }}
+                  inputProps={{ maxLength: 500 }}
+                  helperText={`${formData.reason.length}/500 characters`}
+                />
+
+                <Button
+                  id="submit-leave"
+                  type="submit"
+                  variant="contained"
+                  size="large"
+                  startIcon={
+                    loading ? (
+                      <CircularProgress size={20} color="inherit" />
+                    ) : (
+                      <Send />
+                    )
+                  }
+                  disabled={loading}
+                  sx={{ px: 4 }}
+                >
+                  {loading ? 'Submitting...' : 'Submit Application'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Summary sidebar */}
+        <Grid item xs={12} md={4}>
+          <Card
+            sx={{
+              background: (theme) =>
+                theme.palette.mode === 'dark'
+                  ? 'linear-gradient(135deg, rgba(99,102,241,0.08), rgba(20,184,166,0.05))'
+                  : 'linear-gradient(135deg, rgba(99,102,241,0.04), rgba(20,184,166,0.02))',
+              border: '1px solid',
+              borderColor: 'primary.dark',
+            }}
+          >
+            <CardContent sx={{ p: 3 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  mb: 2.5,
+                }}
+              >
+                <EventNote sx={{ color: 'primary.main' }} />
+                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                  Request Summary
+                </Typography>
+              </Box>
+
+              {[
+                {
+                  label: 'Leave Type',
+                  value: formData.leaveType
+                    ? formData.leaveType.charAt(0).toUpperCase() +
+                      formData.leaveType.slice(1)
+                    : 'â€”',
+                },
+                {
+                  label: 'Start Date',
+                  value: formData.startDate
+                    ? new Date(formData.startDate).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })
+                    : 'â€”',
+                },
+                {
+                  label: 'End Date',
+                  value: formData.endDate
+                    ? new Date(formData.endDate).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })
+                    : 'â€”',
+                },
+                {
+                  label: 'Duration',
+                  value: duration > 0 ? `${duration} day${duration > 1 ? 's' : ''}` : 'â€”',
+                },
+                {
+                  label: 'Available Balance',
+                  value: balance !== null ? `${balance} days` : 'â€”',
+                },
+              ].map((item) => (
+                <Box
+                  key={item.label}
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    py: 1.2,
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    sx={{ color: 'text.secondary' }}
+                  >
+                    {item.label}
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {item.value}
+                  </Typography>
+                </Box>
+              ))}
+
+              {balance !== null && duration > balance && (
+                <Alert severity="warning" sx={{ mt: 2, borderRadius: 2 }}>
+                  Insufficient balance!
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+    </Box>
+  );
+};
+
+export default ApplyLeave;
+
+
+======================================
+FILE: src\pages\Dashboard.jsx
+======================================
+
+import { useState, useEffect } from 'react';
+import {
+  Box,
+  Grid,
+  Typography,
+  Card,
+  CardContent,
+  Chip,
+  LinearProgress,
+  Skeleton,
+} from '@mui/material';
+import {
+  EventAvailable,
+  HourglassTop,
+  CheckCircle,
+  Cancel,
+  TrendingUp,
+  WavingHand,
+} from '@mui/icons-material';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+  CartesianGrid,
+  Legend,
+} from 'recharts';
+import { useAuth } from '../context/AuthContext';
+import api from '../api/axios';
+import StatsCard from '../components/StatsCard';
+
+const CHART_COLORS = ['#fbbf24', '#34d399', '#f87171', '#8892b0'];
+const MONTHS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+/**
+ * Role-adaptive Dashboard â€” Premium layout with rich charts and animated cards
+ */
+const Dashboard = () => {
+  const { user } = useAuth();
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      const res = await api.get('/leaves/stats');
+      setStats(res.data.data);
+    } catch (err) {
+      console.error('Failed to fetch stats:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Box>
+        <Skeleton variant="text" width={300} height={50} sx={{ mb: 2 }} />
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          {[1, 2, 3, 4].map((i) => (
+            <Grid item xs={12} sm={6} md={3} key={i}>
+              <Skeleton variant="rounded" height={130} sx={{ borderRadius: 4 }} />
+            </Grid>
+          ))}
+        </Grid>
+        <Grid container spacing={3}>
+          {[1, 2, 3].map((i) => (
+            <Grid item xs={12} md={4} key={i}>
+              <Skeleton variant="rounded" height={320} sx={{ borderRadius: 4 }} />
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
+    );
+  }
+
+  const statusStats = stats?.statusStats || {
+    total: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+  };
+
+  const typeStats = stats?.typeStats || { casual: 0, sick: 0, paid: 0, maternity: 0 };
+
+  // Pie chart data
+  const pieData = [
+    { name: 'Pending', value: statusStats.pending },
+    { name: 'Approved', value: statusStats.approved },
+    { name: 'Rejected', value: statusStats.rejected },
+    { name: 'Cancelled', value: statusStats.cancelled || 0 },
+  ].filter((d) => d.value > 0);
+
+  // Bar chart data
+  const monthlyData = (stats?.monthlyTrend || []).map((item) => ({
+    name: MONTHS[item._id.month - 1],
+    requests: item.count,
+  }));
+
+  // Leave type chart
+  const typeData = [
+    { name: 'Casual', value: typeStats.casual, color: '#818cf8' },
+    { name: 'Sick', value: typeStats.sick, color: '#f87171' },
+    { name: 'Paid', value: typeStats.paid, color: '#34d399' },
+  ];
+  if (user?.gender === 'female' || user?.role === 'admin' || user?.role === 'manager') {
+    typeData.push({ name: 'Maternity', value: typeStats.maternity || 0, color: '#e879f9' });
+  }
+
+  // Custom tooltip for charts
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (!active || !payload?.length) return null;
+    return (
+      <Box
+        sx={{
+          background: (theme) =>
+            theme.palette.mode === 'dark' ? '#1a1d2e' : '#ffffff',
+          border: '1px solid',
+          borderColor: 'divider',
+          borderRadius: 2.5,
+          px: 2,
+          py: 1.2,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+        }}
+      >
+        {label && (
+          <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.3 }}>
+            {label}
+          </Typography>
+        )}
+        {payload.map((entry, i) => (
+          <Typography key={i} variant="caption" sx={{ color: entry.color || 'text.secondary' }}>
+            {entry.name}: <strong>{entry.value}</strong>
+          </Typography>
+        ))}
+      </Box>
+    );
+  };
+
+  return (
+    <Box>
+      {/* Header */}
+      <Box sx={{ mb: 4, animation: 'fadeIn 0.5s ease-out' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+          <Typography variant="h4" sx={{ fontWeight: 800 }}>
+            Dashboard
+          </Typography>
+        </Box>
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+          {user?.role === 'admin'
+            ? 'Organization-wide leave analytics & overview'
+            : user?.role === 'manager'
+            ? 'Your team\'s leave overview & analytics'
+            : 'Track your leave balance and request history'}
+        </Typography>
+      </Box>
+
+      {/* Stats Cards */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        {[
+          { title: 'Total Requests', value: statusStats.total, icon: <EventAvailable />, color: '#818cf8' },
+          { title: 'Pending', value: statusStats.pending, icon: <HourglassTop />, color: '#fbbf24' },
+          { title: 'Approved', value: statusStats.approved, icon: <CheckCircle />, color: '#34d399' },
+          { title: 'Rejected', value: statusStats.rejected, icon: <Cancel />, color: '#f87171' },
+        ].map((stat, index) => (
+          <Grid
+            item
+            xs={12}
+            sm={6}
+            md={3}
+            key={stat.title}
+            sx={{
+              animation: `fadeIn 0.4s ease-out ${index * 0.08}s both`,
+            }}
+          >
+            <StatsCard {...stat} />
+          </Grid>
+        ))}
+      </Grid>
+
+      <Grid container spacing={3}>
+        {/* Leave Balance (Employee/Manager only) */}
+        {user?.role !== 'admin' && (
+          <Grid item xs={12} md={4}>
+            <Card sx={{ height: '100%', animation: 'fadeIn 0.5s ease-out 0.3s both' }}>
+              <CardContent sx={{ p: 3 }}>
+                <Typography
+                  variant="h6"
+                  sx={{ fontWeight: 700, mb: 3 }}
+                >
+                  Leave Balance
+                </Typography>
+                {[
+                  {
+                    label: 'Casual',
+                    emoji: 'ðŸ–ï¸',
+                    value: user?.leaveBalance?.casual ?? 12,
+                    max: 12,
+                    color: '#818cf8',
+                  },
+                  {
+                    label: 'Sick',
+                    emoji: 'ðŸ¥',
+                    value: user?.leaveBalance?.sick ?? 10,
+                    max: 10,
+                    color: '#f87171',
+                  },
+                  {
+                    label: 'Paid',
+                    emoji: 'ðŸ’°',
+                    value: user?.leaveBalance?.paid ?? 15,
+                    max: 15,
+                    color: '#34d399',
+                  },
+                  ...(user?.gender === 'female'
+                    ? [
+                        {
+                          label: 'Maternity',
+                          emoji: 'ðŸ‘¶',
+                          value: user?.leaveBalance?.maternity ?? 180,
+                          max: 180,
+                          color: '#e879f9',
+                        },
+                      ]
+                    : []),
+                ].map((item) => (
+                  <Box key={item.label} sx={{ mb: 3, '&:last-child': { mb: 0 } }}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        mb: 1,
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                        <Typography variant="body2" component="span">{item.emoji}</Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{ fontWeight: 600 }}
+                        >
+                          {item.label}
+                        </Typography>
+                      </Box>
+                      <Chip
+                        label={`${item.value} / ${item.max}`}
+                        size="small"
+                        sx={{
+                          bgcolor: `${item.color}12`,
+                          color: item.color,
+                          fontWeight: 700,
+                          fontSize: '0.7rem',
+                          height: 24,
+                          border: `1px solid ${item.color}18`,
+                        }}
+                      />
+                    </Box>
+                    <LinearProgress
+                      variant="determinate"
+                      value={(item.value / item.max) * 100}
+                      sx={{
+                        height: 8,
+                        borderRadius: 4,
+                        bgcolor: `${item.color}10`,
+                        '& .MuiLinearProgress-bar': {
+                          borderRadius: 4,
+                          background: `linear-gradient(90deg, ${item.color}, ${item.color}aa)`,
+                        },
+                      }}
+                    />
+                  </Box>
+                ))}
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
+
+        {/* Pie chart â€” Status Distribution */}
+        <Grid item xs={12} md={user?.role !== 'admin' ? 4 : 6}>
+          <Card sx={{ height: '100%', animation: 'fadeIn 0.5s ease-out 0.4s both' }}>
+            <CardContent sx={{ p: 3 }}>
+              <Typography
+                variant="h6"
+                sx={{ fontWeight: 700, mb: 2 }}
+              >
+                Status Distribution
+              </Typography>
+              {pieData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={58}
+                      outerRadius={88}
+                      paddingAngle={4}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {pieData.map((_, index) => (
+                        <Cell
+                          key={index}
+                          fill={CHART_COLORS[index % CHART_COLORS.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip content={<CustomTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <Box
+                  sx={{
+                    height: 220,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Typography color="text.secondary" variant="body2">
+                    No leave data yet
+                  </Typography>
+                </Box>
+              )}
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  gap: 2,
+                  flexWrap: 'wrap',
+                  mt: 1,
+                }}
+              >
+                {pieData.map((entry, i) => (
+                  <Box
+                    key={entry.name}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.6,
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        bgcolor: CHART_COLORS[i % CHART_COLORS.length],
+                      }}
+                    />
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+                      {entry.name} ({entry.value})
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Bar chart â€” Monthly Trend */}
+        <Grid item xs={12} md={user?.role !== 'admin' ? 4 : 6}>
+          <Card sx={{ height: '100%', animation: 'fadeIn 0.5s ease-out 0.5s both' }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  mb: 2,
+                }}
+              >
+                <TrendingUp sx={{ color: 'primary.main', fontSize: 20 }} />
+                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                  Monthly Trend
+                </Typography>
+              </Box>
+              {monthlyData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={monthlyData}>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="rgba(136,146,176,0.08)"
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fill: '#8892b0', fontSize: 11, fontWeight: 500 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fill: '#8892b0', fontSize: 11, fontWeight: 500 }}
+                      axisLine={false}
+                      tickLine={false}
+                      allowDecimals={false}
+                    />
+                    <RechartsTooltip content={<CustomTooltip />} />
+                    <Bar
+                      dataKey="requests"
+                      fill="#818cf8"
+                      radius={[6, 6, 0, 0]}
+                      maxBarSize={36}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <Box
+                  sx={{
+                    height: 220,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Typography color="text.secondary" variant="body2">
+                    No trend data yet
+                  </Typography>
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Leave Types Breakdown */}
+        <Grid item xs={12}>
+          <Card sx={{ animation: 'fadeIn 0.5s ease-out 0.6s both' }}>
+            <CardContent sx={{ p: 3 }}>
+              <Typography
+                variant="h6"
+                sx={{ fontWeight: 700, mb: 2.5 }}
+              >
+                Leave Types Breakdown
+              </Typography>
+              <Grid container spacing={2.5}>
+                {typeData.map((type, index) => (
+                  <Grid item xs={12} sm={4} key={type.name}>
+                    <Box
+                      sx={{
+                        p: 3,
+                        borderRadius: 4,
+                        bgcolor: `${type.color}06`,
+                        border: `1px solid ${type.color}12`,
+                        textAlign: 'center',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        cursor: 'default',
+                        '&:hover': {
+                          transform: 'translateY(-4px) scale(1.01)',
+                          bgcolor: `${type.color}10`,
+                          boxShadow: `0 8px 24px ${type.color}12`,
+                        },
+                      }}
+                    >
+                      <Typography
+                        variant="h2"
+                        sx={{
+                          fontWeight: 800,
+                          color: type.color,
+                          mb: 0.5,
+                          lineHeight: 1.1,
+                        }}
+                      >
+                        {type.value}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 600,
+                          color: 'text.secondary',
+                        }}
+                      >
+                        {type.name} Leave
+                      </Typography>
+                    </Box>
+                  </Grid>
+                ))}
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+    </Box>
+  );
+};
+
+export default Dashboard;
+
+
+======================================
+FILE: src\pages\DatabaseViewer.jsx
+======================================
+
+import { useState, useEffect } from 'react';
+import {
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  Tabs,
+  Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Chip,
+  Avatar,
+  LinearProgress,
+  Grid,
+  TextField,
+  InputAdornment,
+  Tooltip,
+} from '@mui/material';
+import {
+  Storage,
+  People,
+  EventNote,
+  Search,
+  Circle,
+} from '@mui/icons-material';
+import dayjs from 'dayjs';
+import api from '../api/axios';
+import StatsCard from '../components/StatsCard';
+import { DEPARTMENT_CONFIG, ROLE_CONFIG } from '../constants/departments';
+
+/**
+ * Database Viewer â€” Read-only admin view of all data
+ */
+const DatabaseViewer = () => {
+  const [tab, setTab] = useState(0);
+  const [users, setUsers] = useState([]);
+  const [leaves, setLeaves] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [userSearch, setUserSearch] = useState('');
+  const [leaveSearch, setLeaveSearch] = useState('');
+
+  useEffect(() => {
+    fetchAll();
+  }, []);
+
+  const fetchAll = async () => {
+    setLoading(true);
+    try {
+      const [usersRes, leavesRes] = await Promise.all([
+        api.get('/users', { params: { limit: 100 } }),
+        api.get('/leaves', { params: { limit: 100 } }),
+      ]);
+      setUsers(usersRes.data.data.users || []);
+      setLeaves(leavesRes.data.data.leaves || []);
+    } catch (err) {
+      console.error('Failed to fetch data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Filter helpers
+  const filteredUsers = users.filter(
+    (u) =>
+      u.name?.toLowerCase().includes(userSearch.toLowerCase()) ||
+      u.email?.toLowerCase().includes(userSearch.toLowerCase()) ||
+      u.department?.toLowerCase().includes(userSearch.toLowerCase()) ||
+      u.role?.toLowerCase().includes(userSearch.toLowerCase())
+  );
+
+  const filteredLeaves = leaves.filter(
+    (l) =>
+      l.employee?.name?.toLowerCase().includes(leaveSearch.toLowerCase()) ||
+      l.employee?.department?.toLowerCase().includes(leaveSearch.toLowerCase()) ||
+      l.leaveType?.toLowerCase().includes(leaveSearch.toLowerCase()) ||
+      l.status?.toLowerCase().includes(leaveSearch.toLowerCase()) ||
+      l.reason?.toLowerCase().includes(leaveSearch.toLowerCase())
+  );
+
+  // Stats
+  const roleCount = { admin: 0, manager: 0, employee: 0 };
+  users.forEach((u) => {
+    if (roleCount[u.role] !== undefined) roleCount[u.role]++;
+  });
+
+  const statusCount = { pending: 0, approved: 0, rejected: 0, cancelled: 0 };
+  leaves.forEach((l) => {
+    if (statusCount[l.status] !== undefined) statusCount[l.status]++;
+  });
+
+  const statusChipSx = {
+    pending: { bgcolor: 'rgba(251,191,36,0.12)', color: '#fbbf24' },
+    approved: { bgcolor: 'rgba(52,211,153,0.12)', color: '#34d399' },
+    rejected: { bgcolor: 'rgba(248,113,113,0.12)', color: '#f87171' },
+    cancelled: { bgcolor: 'rgba(136,146,176,0.12)', color: '#8892b0' },
+  };
+
+  const leaveTypeColors = {
+    casual: '#818cf8',
+    sick: '#f87171',
+    paid: '#34d399',
+    maternity: '#e879f9',
+  };
+
+  if (loading) {
+    return (
+      <Box>
+        <Typography variant="h4" sx={{ fontWeight: 800, mb: 3 }}>
+          ðŸ“Š Database Viewer
+        </Typography>
+        <LinearProgress sx={{ borderRadius: 2 }} />
+      </Box>
+    );
+  }
+
+  return (
+    <Box>
+      {/* Header */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+        <Storage sx={{ fontSize: 32, color: 'primary.main' }} />
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 800 }}>
+            Database Viewer
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            Read-only view of all system data â€¢ {users.length} users â€¢ {leaves.length} leave records
+          </Typography>
+        </Box>
+      </Box>
+
+      {/* Summary Stats */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={6} sm={3}>
+          <StatsCard
+            title="Total Users"
+            value={users.length}
+            icon={<People />}
+            color="#6366f1"
+          />
+        </Grid>
+        <Grid item xs={6} sm={3}>
+          <StatsCard
+            title="Admins"
+            value={roleCount.admin}
+            icon={<People />}
+            color={ROLE_CONFIG.admin.color}
+          />
+        </Grid>
+        <Grid item xs={6} sm={3}>
+          <StatsCard
+            title="Managers"
+            value={roleCount.manager}
+            icon={<People />}
+            color={ROLE_CONFIG.manager.color}
+          />
+        </Grid>
+        <Grid item xs={6} sm={3}>
+          <StatsCard
+            title="Employees"
+            value={roleCount.employee}
+            icon={<People />}
+            color={ROLE_CONFIG.employee.color}
+          />
+        </Grid>
+      </Grid>
+
+      {/* Tabs */}
+      <Card sx={{ mb: 3 }}>
+        <Tabs
+          value={tab}
+          onChange={(_, v) => setTab(v)}
+          sx={{
+            px: 2,
+            '& .MuiTab-root': {
+              fontWeight: 600,
+              textTransform: 'none',
+              fontSize: '0.9rem',
+            },
+          }}
+        >
+          <Tab
+            icon={<People sx={{ fontSize: 18 }} />}
+            iconPosition="start"
+            label={`Users Collection (${users.length})`}
+          />
+          <Tab
+            icon={<EventNote sx={{ fontSize: 18 }} />}
+            iconPosition="start"
+            label={`Leaves Collection (${leaves.length})`}
+          />
+        </Tabs>
+      </Card>
+
+      {/* â”€â”€â”€ Users Tab â”€â”€â”€ */}
+      {tab === 0 && (
+        <Box>
+          <TextField
+            size="small"
+            placeholder="Search users by name, email, role, department..."
+            value={userSearch}
+            onChange={(e) => setUserSearch(e.target.value)}
+            sx={{ mb: 2, minWidth: 340 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search sx={{ color: 'text.secondary', fontSize: 20 }} />
+                </InputAdornment>
+              ),
+            }}
+          />
+
+          <TableContainer
+            component={Paper}
+            sx={{
+              borderRadius: 3,
+              border: '1px solid',
+              borderColor: 'divider',
+              boxShadow: 'none',
+              maxHeight: 520,
+            }}
+          >
+            <Table stickyHeader size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>#</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>User</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Role</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Department</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Gender</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Manager</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Leave Balance</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Created</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredUsers.map((user, idx) => {
+                  const roleInfo = ROLE_CONFIG[user.role] || ROLE_CONFIG.employee;
+                  const deptInfo = DEPARTMENT_CONFIG[user.department] || { emoji: 'ðŸ¢', color: '#64748b' };
+                  return (
+                    <TableRow
+                      key={user._id}
+                      sx={{
+                        transition: 'background 0.15s ease',
+                        '&:hover': { bgcolor: 'action.hover' },
+                        opacity: user.isActive ? 1 : 0.5,
+                      }}
+                    >
+                      <TableCell>
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                          {idx + 1}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+                          <Avatar
+                            sx={{
+                              width: 30,
+                              height: 30,
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              bgcolor: roleInfo.color,
+                            }}
+                          >
+                            {user.name?.charAt(0)?.toUpperCase()}
+                          </Avatar>
+                          <Box>
+                            <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
+                              {user.name}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.68rem' }}>
+                              {user.email}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={`${roleInfo.icon} ${roleInfo.label}`}
+                          size="small"
+                          sx={{
+                            bgcolor: roleInfo.bg,
+                            color: roleInfo.color,
+                            fontWeight: 700,
+                            fontSize: '0.68rem',
+                            height: 24,
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
+                          <Typography component="span" sx={{ fontSize: '0.8rem' }}>
+                            {deptInfo.emoji}
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.8rem' }}>
+                            {user.department}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ textTransform: 'capitalize', fontSize: '0.8rem' }}>
+                          {user.gender === 'female' ? 'â™€ï¸' : user.gender === 'male' ? 'â™‚ï¸' : 'âš§ï¸'} {user.gender}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
+                          {user.manager?.name || 'â€”'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                          {[
+                            { key: 'casual', label: 'C', color: '#818cf8' },
+                            { key: 'sick', label: 'S', color: '#f87171' },
+                            { key: 'paid', label: 'P', color: '#34d399' },
+                          ].map((lt) => (
+                            <Tooltip key={lt.key} title={`${lt.key}: ${user.leaveBalance?.[lt.key] ?? '?'} days`} arrow>
+                              <Chip
+                                label={`${lt.label}:${user.leaveBalance?.[lt.key] ?? '?'}`}
+                                size="small"
+                                sx={{
+                                  height: 20,
+                                  fontSize: '0.62rem',
+                                  fontWeight: 700,
+                                  bgcolor: `${lt.color}12`,
+                                  color: lt.color,
+                                  '& .MuiChip-label': { px: 0.6 },
+                                }}
+                              />
+                            </Tooltip>
+                          ))}
+                          {user.gender === 'female' && (
+                            <Tooltip title={`maternity: ${user.leaveBalance?.maternity ?? '?'} days`} arrow>
+                              <Chip
+                                label={`M:${user.leaveBalance?.maternity ?? '?'}`}
+                                size="small"
+                                sx={{
+                                  height: 20,
+                                  fontSize: '0.62rem',
+                                  fontWeight: 700,
+                                  bgcolor: 'rgba(232,121,249,0.12)',
+                                  color: '#e879f9',
+                                  '& .MuiChip-label': { px: 0.6 },
+                                }}
+                              />
+                            </Tooltip>
+                          )}
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          icon={<Circle sx={{ fontSize: '8px !important' }} />}
+                          label={user.isActive ? 'Active' : 'Inactive'}
+                          size="small"
+                          sx={{
+                            height: 22,
+                            fontSize: '0.68rem',
+                            fontWeight: 600,
+                            bgcolor: user.isActive ? 'rgba(52,211,153,0.1)' : 'rgba(136,146,176,0.1)',
+                            color: user.isActive ? '#34d399' : '#8892b0',
+                            '& .MuiChip-icon': {
+                              color: user.isActive ? '#34d399' : '#8892b0',
+                            },
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                          {dayjs(user.createdAt).format('MMM D, YYYY')}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {filteredUsers.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
+                      <Typography color="text.secondary">No users match your search</Typography>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>
+            Showing {filteredUsers.length} of {users.length} users
+          </Typography>
+        </Box>
+      )}
+
+      {/* â”€â”€â”€ Leaves Tab â”€â”€â”€ */}
+      {tab === 1 && (
+        <Box>
+          {/* Leave stats */}
+          <Grid container spacing={2} sx={{ mb: 2.5 }}>
+            {[
+              { label: 'Pending', count: statusCount.pending, color: '#fbbf24', icon: 'â³' },
+              { label: 'Approved', count: statusCount.approved, color: '#34d399', icon: 'âœ…' },
+              { label: 'Rejected', count: statusCount.rejected, color: '#f87171', icon: 'âŒ' },
+              { label: 'Cancelled', count: statusCount.cancelled, color: '#8892b0', icon: 'ðŸš«' },
+            ].map((s) => (
+              <Grid item xs={6} sm={3} key={s.label}>
+                <Box
+                  sx={{
+                    p: 2,
+                    borderRadius: 3,
+                    bgcolor: `${s.color}06`,
+                    border: `1px solid ${s.color}12`,
+                    textAlign: 'center',
+                  }}
+                >
+                  <Typography sx={{ fontSize: '1.5rem', fontWeight: 800, color: s.color }}>
+                    {s.count}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                    {s.icon} {s.label}
+                  </Typography>
+                </Box>
+              </Grid>
+            ))}
+          </Grid>
+
+          <TextField
+            size="small"
+            placeholder="Search leaves by employee, department, type, status, reason..."
+            value={leaveSearch}
+            onChange={(e) => setLeaveSearch(e.target.value)}
+            sx={{ mb: 2, minWidth: 400 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search sx={{ color: 'text.secondary', fontSize: 20 }} />
+                </InputAdornment>
+              ),
+            }}
+          />
+
+          <TableContainer
+            component={Paper}
+            sx={{
+              borderRadius: 3,
+              border: '1px solid',
+              borderColor: 'divider',
+              boxShadow: 'none',
+              maxHeight: 480,
+            }}
+          >
+            <Table stickyHeader size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>#</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Employee</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Department</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Type</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Dates</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Duration</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Reason</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Reviewed By</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Review Note</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Applied</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredLeaves.map((leave, idx) => {
+                  const duration =
+                    leave.duration ||
+                    dayjs(leave.endDate).diff(dayjs(leave.startDate), 'day') + 1;
+                  const typeColor = leaveTypeColors[leave.leaveType] || '#818cf8';
+                  const statusSx = statusChipSx[leave.status] || statusChipSx.pending;
+                  const deptInfo = DEPARTMENT_CONFIG[leave.employee?.department] || { emoji: 'ðŸ¢' };
+
+                  return (
+                    <TableRow
+                      key={leave._id}
+                      sx={{
+                        transition: 'background 0.15s ease',
+                        '&:hover': { bgcolor: 'action.hover' },
+                      }}
+                    >
+                      <TableCell>
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                          {idx + 1}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Avatar
+                            sx={{
+                              width: 28,
+                              height: 28,
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                              bgcolor: 'primary.main',
+                            }}
+                          >
+                            {leave.employee?.name?.charAt(0)?.toUpperCase()}
+                          </Avatar>
+                          <Box>
+                            <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem', lineHeight: 1.3 }}>
+                              {leave.employee?.name || 'N/A'}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem' }}>
+                              {leave.employee?.email}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4 }}>
+                          <Typography component="span" sx={{ fontSize: '0.75rem' }}>
+                            {deptInfo.emoji}
+                          </Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                            {leave.employee?.department || 'N/A'}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={leave.leaveType}
+                          size="small"
+                          sx={{
+                            bgcolor: `${typeColor}12`,
+                            color: typeColor,
+                            fontWeight: 700,
+                            textTransform: 'capitalize',
+                            fontSize: '0.68rem',
+                            height: 22,
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                          {dayjs(leave.startDate).format('MMM D')} â†’ {dayjs(leave.endDate).format('MMM D')}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
+                          {duration} day{duration > 1 ? 's' : ''}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={leave.status}
+                          size="small"
+                          sx={{
+                            ...statusSx,
+                            fontWeight: 700,
+                            textTransform: 'capitalize',
+                            fontSize: '0.68rem',
+                            height: 22,
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Tooltip title={leave.reason} arrow>
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              maxWidth: 160,
+                              display: 'block',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {leave.reason}
+                          </Typography>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                          {leave.reviewedBy?.name || 'â€”'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        {leave.reviewComment ? (
+                          <Tooltip title={leave.reviewComment} arrow>
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                maxWidth: 140,
+                                display: 'block',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                fontStyle: 'italic',
+                                color: 'text.secondary',
+                              }}
+                            >
+                              ðŸ’¬ {leave.reviewComment}
+                            </Typography>
+                          </Tooltip>
+                        ) : (
+                          <Typography variant="caption" sx={{ color: 'text.disabled' }}>â€”</Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                          {dayjs(leave.createdAt).format('MMM D, YYYY')}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {filteredLeaves.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={11} align="center" sx={{ py: 4 }}>
+                      <Typography color="text.secondary">No leave records match your search</Typography>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>
+            Showing {filteredLeaves.length} of {leaves.length} leave records
+          </Typography>
+        </Box>
+      )}
+    </Box>
+  );
+};
+
+export default DatabaseViewer;
+
+
+======================================
+FILE: src\pages\LeaveHistory.jsx
+======================================
+
+import { useState, useEffect, useCallback } from 'react';
+import {
+  Box,
+  Typography,
+  Grid,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Pagination,
+  LinearProgress,
+  Chip,
+  Button,
+} from '@mui/material';
+import { FilterList, Refresh } from '@mui/icons-material';
+import api from '../api/axios';
+import LeaveCard from '../components/LeaveCard';
+import toast from 'react-hot-toast';
+
+/**
+ * Leave History Page
+ * Shows the current employee's leave records with filtering and pagination
+ */
+const LeaveHistory = () => {
+  const [leaves, setLeaves] = useState([]);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    pages: 1,
+  });
+  const [filters, setFilters] = useState({ status: '', leaveType: '' });
+  const [loading, setLoading] = useState(true);
+
+  const fetchLeaves = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = { page: pagination.page, limit: 9 };
+      if (filters.status) params.status = filters.status;
+      if (filters.leaveType) params.leaveType = filters.leaveType;
+
+      const res = await api.get('/leaves/my', { params });
+      setLeaves(res.data.data.leaves);
+      setPagination((prev) => ({ ...prev, ...res.data.data.pagination }));
+    } catch (err) {
+      toast.error('Failed to load leave history');
+    } finally {
+      setLoading(false);
+    }
+  }, [pagination.page, filters]);
+
+  useEffect(() => {
+    fetchLeaves();
+  }, [fetchLeaves]);
+
+  const handleCancel = async (leaveId) => {
+    try {
+      await api.patch(`/leaves/${leaveId}/cancel`);
+      toast.success('Leave request cancelled');
+      fetchLeaves();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to cancel leave');
+    }
+  };
+
+  const handleFilterChange = (key, value) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  };
+
+  const clearFilters = () => {
+    setFilters({ status: '', leaveType: '' });
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  };
+
+  const hasFilters = filters.status || filters.leaveType;
+
+  return (
+    <Box>
+      {/* Header */}
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          gap: 2,
+          mb: 3,
+        }}
+      >
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>
+            My Leaves
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            View and manage your leave requests
+          </Typography>
+        </Box>
+        <Button
+          startIcon={<Refresh />}
+          onClick={fetchLeaves}
+          variant="outlined"
+          size="small"
+          sx={{ borderRadius: 2 }}
+        >
+          Refresh
+        </Button>
+      </Box>
+
+      {/* Filters */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          mb: 3,
+          flexWrap: 'wrap',
+        }}
+      >
+        <FilterList sx={{ color: 'text.secondary' }} />
+        <FormControl size="small" sx={{ minWidth: 140 }}>
+          <InputLabel>Status</InputLabel>
+          <Select
+            value={filters.status}
+            label="Status"
+            onChange={(e) => handleFilterChange('status', e.target.value)}
+          >
+            <MenuItem value="">All</MenuItem>
+            <MenuItem value="pending">Pending</MenuItem>
+            <MenuItem value="approved">Approved</MenuItem>
+            <MenuItem value="rejected">Rejected</MenuItem>
+            <MenuItem value="cancelled">Cancelled</MenuItem>
+          </Select>
+        </FormControl>
+        <FormControl size="small" sx={{ minWidth: 140 }}>
+          <InputLabel>Type</InputLabel>
+          <Select
+            value={filters.leaveType}
+            label="Type"
+            onChange={(e) => handleFilterChange('leaveType', e.target.value)}
+          >
+            <MenuItem value="">All</MenuItem>
+            <MenuItem value="casual">Casual</MenuItem>
+            <MenuItem value="sick">Sick</MenuItem>
+            <MenuItem value="paid">Paid</MenuItem>
+            <MenuItem value="maternity">Maternity</MenuItem>
+          </Select>
+        </FormControl>
+        {hasFilters && (
+          <Chip
+            label="Clear filters"
+            onDelete={clearFilters}
+            size="small"
+            variant="outlined"
+            sx={{ borderRadius: 2 }}
+          />
+        )}
+        <Typography
+          variant="caption"
+          sx={{ color: 'text.secondary', ml: 'auto' }}
+        >
+          {pagination.total} total record{pagination.total !== 1 ? 's' : ''}
+        </Typography>
+      </Box>
+
+      {loading && <LinearProgress sx={{ mb: 2, borderRadius: 2 }} />}
+
+      {/* Leave Cards Grid */}
+      {!loading && leaves.length === 0 ? (
+        <Box
+          sx={{
+            textAlign: 'center',
+            py: 8,
+            color: 'text.secondary',
+          }}
+        >
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            No leave requests found
+          </Typography>
+          <Typography variant="body2">
+            {hasFilters
+              ? 'Try adjusting your filters'
+              : "You haven't applied for any leave yet"}
+          </Typography>
+        </Box>
+      ) : (
+        <Grid container spacing={2.5}>
+          {leaves.map((leave, index) => (
+            <Grid
+              item
+              xs={12}
+              sm={6}
+              lg={4}
+              key={leave._id}
+              sx={{
+                animation: `fadeInUp 0.4s ease-out ${index * 0.05}s both`,
+                '@keyframes fadeInUp': {
+                  from: { opacity: 0, transform: 'translateY(12px)' },
+                  to: { opacity: 1, transform: 'translateY(0)' },
+                },
+              }}
+            >
+              <LeaveCard leave={leave} onCancel={handleCancel} />
+            </Grid>
+          ))}
+        </Grid>
+      )}
+
+      {/* Pagination */}
+      {pagination.pages > 1 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+          <Pagination
+            count={pagination.pages}
+            page={pagination.page}
+            onChange={(_, page) =>
+              setPagination((prev) => ({ ...prev, page }))
+            }
+            color="primary"
+            shape="rounded"
+            sx={{
+              '& .MuiPaginationItem-root': {
+                fontWeight: 600,
+              },
+            }}
+          />
+        </Box>
+      )}
+    </Box>
+  );
+};
+
+export default LeaveHistory;
+
+
+======================================
+FILE: src\pages\Login.jsx
+======================================
+
+import { useState } from 'react';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import {
+  Box,
+  Card,
+  CardContent,
+  TextField,
+  Button,
+  Typography,
+  Link,
+  InputAdornment,
+  IconButton,
+  CircularProgress,
+  Alert,
+  Divider,
+  Chip,
+} from '@mui/material';
+import {
+  Visibility,
+  VisibilityOff,
+  Email,
+  Lock,
+  CalendarMonth,
+  ArrowForward,
+} from '@mui/icons-material';
+import { useAuth } from '../context/AuthContext';
+import toast from 'react-hot-toast';
+
+/**
+ * Login Page â€” Premium centered card with animated background orbs
+ */
+const Login = () => {
+  const navigate = useNavigate();
+  const { login } = useAuth();
+  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setError('');
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      await login(formData.email, formData.password);
+      toast.success('Welcome back!');
+      navigate('/dashboard');
+    } catch (err) {
+      const msg =
+        err.response?.data?.message || 'Login failed. Please try again.';
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        p: 2,
+        position: 'relative',
+        overflow: 'hidden',
+        background: (theme) =>
+          theme.palette.mode === 'dark'
+            ? '#06070e'
+            : '#f4f6fb',
+      }}
+    >
+      {/* Animated background orbs */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: '-20%',
+          left: '-10%',
+          width: '500px',
+          height: '500px',
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%)',
+          filter: 'blur(60px)',
+          animation: 'float 8s ease-in-out infinite',
+        }}
+      />
+      <Box
+        sx={{
+          position: 'absolute',
+          bottom: '-15%',
+          right: '-10%',
+          width: '450px',
+          height: '450px',
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(20,184,166,0.1) 0%, transparent 70%)',
+          filter: 'blur(60px)',
+          animation: 'float 10s ease-in-out infinite reverse',
+        }}
+      />
+
+      <Box sx={{ width: '100%', maxWidth: 440, position: 'relative', zIndex: 1 }}>
+        {/* Brand */}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 1.5,
+            mb: 5,
+            animation: 'fadeIn 0.7s ease-out',
+          }}
+        >
+          <Box
+            sx={{
+              width: 52,
+              height: 52,
+              borderRadius: '16px',
+              background: 'linear-gradient(135deg, #6366f1, #14b8a6)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 8px 24px rgba(99,102,241,0.3)',
+              animation: 'glow 3s ease-in-out infinite',
+            }}
+          >
+            <CalendarMonth sx={{ fontSize: 28, color: '#ffffff' }} />
+          </Box>
+          <Box>
+            <Typography
+              variant="h4"
+              sx={{
+                fontWeight: 800,
+                background: 'linear-gradient(135deg, #818cf8, #2dd4bf)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                lineHeight: 1.1,
+              }}
+            >
+              LeaveFlow
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'text.secondary',
+                fontWeight: 500,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                fontSize: '0.65rem',
+              }}
+            >
+              Leave Management System
+            </Typography>
+          </Box>
+        </Box>
+
+        <Card
+          sx={{
+            animation: 'fadeIn 0.6s ease-out 0.15s both',
+            '&:hover': {
+              boxShadow: (theme) =>
+                theme.palette.mode === 'dark'
+                  ? '0 8px 40px rgba(0,0,0,0.5)'
+                  : '0 8px 40px rgba(0,0,0,0.08)',
+            },
+          }}
+        >
+          <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+            <Typography
+              variant="h5"
+              sx={{ fontWeight: 700, mb: 0.5 }}
+            >
+              Welcome back
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{ color: 'text.secondary', mb: 3.5 }}
+            >
+              Sign in to your account to continue
+            </Typography>
+
+            {error && (
+              <Alert
+                severity="error"
+                sx={{
+                  mb: 2.5,
+                  borderRadius: 3,
+                  '& .MuiAlert-message': { fontWeight: 500 },
+                }}
+              >
+                {error}
+              </Alert>
+            )}
+
+            <form onSubmit={handleSubmit}>
+              <TextField
+                id="login-email"
+                name="email"
+                label="Email Address"
+                type="email"
+                fullWidth
+                required
+                value={formData.email}
+                onChange={handleChange}
+                sx={{ mb: 2.5 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Email sx={{ color: 'text.secondary', fontSize: 20 }} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+
+              <TextField
+                id="login-password"
+                name="password"
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                fullWidth
+                required
+                value={formData.password}
+                onChange={handleChange}
+                sx={{ mb: 3.5 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Lock sx={{ color: 'text.secondary', fontSize: 20 }} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowPassword(!showPassword)}
+                        edge="end"
+                        size="small"
+                      >
+                        {showPassword ? (
+                          <VisibilityOff fontSize="small" />
+                        ) : (
+                          <Visibility fontSize="small" />
+                        )}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+
+              <Button
+                id="login-submit"
+                type="submit"
+                variant="contained"
+                fullWidth
+                size="large"
+                disabled={loading}
+                endIcon={!loading && <ArrowForward sx={{ fontSize: 18 }} />}
+                sx={{
+                  py: 1.6,
+                  fontSize: '0.95rem',
+                  fontWeight: 700,
+                  borderRadius: 3,
+                }}
+              >
+                {loading ? (
+                  <CircularProgress size={24} color="inherit" />
+                ) : (
+                  'Sign In'
+                )}
+              </Button>
+            </form>
+
+            <Divider sx={{ my: 3 }}>
+              <Chip
+                label="OR"
+                size="small"
+                sx={{ fontSize: '0.7rem', fontWeight: 600, px: 1 }}
+              />
+            </Divider>
+
+            <Typography
+              variant="body2"
+              sx={{ textAlign: 'center', color: 'text.secondary' }}
+            >
+              Don&apos;t have an account?{' '}
+              <Link
+                component={RouterLink}
+                to="/register"
+                sx={{
+                  fontWeight: 700,
+                  color: 'primary.main',
+                  textDecoration: 'none',
+                  '&:hover': { textDecoration: 'underline' },
+                }}
+              >
+                Create one
+              </Link>
+            </Typography>
+          </CardContent>
+        </Card>
+
+        {/* Demo credentials */}
+        <Card
+          sx={{
+            mt: 2.5,
+            animation: 'fadeIn 0.6s ease-out 0.4s both',
+            background: (theme) =>
+              theme.palette.mode === 'dark'
+                ? 'rgba(99,102,241,0.05)'
+                : 'rgba(99,102,241,0.03)',
+            border: '1px solid',
+            borderColor: (theme) =>
+              theme.palette.mode === 'dark'
+                ? 'rgba(99,102,241,0.12)'
+                : 'rgba(99,102,241,0.08)',
+          }}
+        >
+          <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
+            <Typography
+              variant="caption"
+              sx={{
+                fontWeight: 700,
+                display: 'block',
+                mb: 1,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                color: 'primary.main',
+                fontSize: '0.68rem',
+              }}
+            >
+              Demo Credentials
+            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.6 }}>
+              {[
+                { role: 'Admin', email: 'admin@company.com', pass: 'admin123' },
+                { role: 'Manager', email: 'sarah.manager@company.com', pass: 'manager123' },
+                { role: 'Employee', email: 'alice@company.com', pass: 'employee123' },
+              ].map((cred) => (
+                <Box key={cred.role} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Chip
+                    label={cred.role}
+                    size="small"
+                    sx={{
+                      minWidth: 72,
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      height: 22,
+                    }}
+                    variant="outlined"
+                    color="primary"
+                  />
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'monospace', fontSize: '0.72rem' }}>
+                    {cred.email} / {cred.pass}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          </CardContent>
+        </Card>
+      </Box>
+    </Box>
+  );
+};
+
+export default Login;
+
+
+======================================
+FILE: src\pages\ManagerPanel.jsx
+======================================
+
+import { useState, useEffect, useCallback } from 'react';
+import {
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  Button,
+  Chip,
+  Avatar,
+  TextField,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Pagination,
+  LinearProgress,
+  Grid,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  IconButton,
+  Tooltip,
+} from '@mui/material';
+import {
+  CheckCircle,
+  Cancel,
+  Visibility,
+  FilterList,
+} from '@mui/icons-material';
+import dayjs from 'dayjs';
+import api from '../api/axios';
+import { DEPARTMENT_CONFIG } from '../constants/departments';
+import toast from 'react-hot-toast';
+
+const STATUS_COLORS = {
+  pending: 'warning',
+  approved: 'success',
+  rejected: 'error',
+  cancelled: 'default',
+};
+
+const TYPE_COLORS = {
+  casual: '#6366f1',
+  sick: '#ef4444',
+  paid: '#10b981',
+  maternity: '#e879f9',
+};
+
+/**
+ * Manager Panel
+ * View and review team leave requests
+ */
+const ManagerPanel = () => {
+  const [leaves, setLeaves] = useState([]);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    pages: 1,
+  });
+  const [filters, setFilters] = useState({ status: '', leaveType: '' });
+  const [loading, setLoading] = useState(true);
+
+  // Review dialog state
+  const [reviewDialog, setReviewDialog] = useState(false);
+  const [selectedLeave, setSelectedLeave] = useState(null);
+  const [reviewAction, setReviewAction] = useState('');
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewLoading, setReviewLoading] = useState(false);
+
+  // Detail dialog
+  const [detailDialog, setDetailDialog] = useState(false);
+  const [detailLeave, setDetailLeave] = useState(null);
+
+  const fetchTeamLeaves = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = { page: pagination.page, limit: 10 };
+      if (filters.status) params.status = filters.status;
+      if (filters.leaveType) params.leaveType = filters.leaveType;
+
+      const res = await api.get('/leaves/team', { params });
+      setLeaves(res.data.data.leaves);
+      setPagination((prev) => ({ ...prev, ...res.data.data.pagination }));
+    } catch (err) {
+      toast.error('Failed to load team leaves');
+    } finally {
+      setLoading(false);
+    }
+  }, [pagination.page, filters]);
+
+  useEffect(() => {
+    fetchTeamLeaves();
+  }, [fetchTeamLeaves]);
+
+  const openReview = (leave, action) => {
+    setSelectedLeave(leave);
+    setReviewAction(action);
+    setReviewComment('');
+    setReviewDialog(true);
+  };
+
+  const handleReview = async () => {
+    setReviewLoading(true);
+    try {
+      await api.patch(`/leaves/${selectedLeave._id}/review`, {
+        status: reviewAction,
+        reviewComment,
+      });
+      toast.success(`Leave ${reviewAction} successfully`);
+      setReviewDialog(false);
+      fetchTeamLeaves();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to review leave');
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
+  const pendingCount = leaves.filter((l) => l.status === 'pending').length;
+
+  return (
+    <Box>
+      {/* Header */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>
+          Team Requests
+        </Typography>
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+          Manage your team's leave applications
+          {pendingCount > 0 && (
+            <Chip
+              label={`${pendingCount} pending`}
+              size="small"
+              color="warning"
+              sx={{ ml: 1, fontWeight: 600, fontSize: '0.7rem' }}
+            />
+          )}
+        </Typography>
+      </Box>
+
+      {/* Filters */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          mb: 3,
+          flexWrap: 'wrap',
+        }}
+      >
+        <FilterList sx={{ color: 'text.secondary' }} />
+        <FormControl size="small" sx={{ minWidth: 140 }}>
+          <InputLabel>Status</InputLabel>
+          <Select
+            value={filters.status}
+            label="Status"
+            onChange={(e) => {
+              setFilters((prev) => ({ ...prev, status: e.target.value }));
+              setPagination((prev) => ({ ...prev, page: 1 }));
+            }}
+          >
+            <MenuItem value="">All</MenuItem>
+            <MenuItem value="pending">Pending</MenuItem>
+            <MenuItem value="approved">Approved</MenuItem>
+            <MenuItem value="rejected">Rejected</MenuItem>
+          </Select>
+        </FormControl>
+        <FormControl size="small" sx={{ minWidth: 140 }}>
+          <InputLabel>Type</InputLabel>
+          <Select
+            value={filters.leaveType}
+            label="Type"
+            onChange={(e) => {
+              setFilters((prev) => ({ ...prev, leaveType: e.target.value }));
+              setPagination((prev) => ({ ...prev, page: 1 }));
+            }}
+          >
+            <MenuItem value="">All</MenuItem>
+            <MenuItem value="casual">Casual</MenuItem>
+            <MenuItem value="sick">Sick</MenuItem>
+            <MenuItem value="paid">Paid</MenuItem>
+            <MenuItem value="maternity">Maternity</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
+
+      {loading && <LinearProgress sx={{ mb: 2, borderRadius: 2 }} />}
+
+      {/* Requests Table */}
+      {!loading && leaves.length === 0 ? (
+        <Box sx={{ textAlign: 'center', py: 8, color: 'text.secondary' }}>
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            No team leave requests found
+          </Typography>
+          <Typography variant="body2">
+            No employees have submitted leave requests yet
+          </Typography>
+        </Box>
+      ) : (
+        <TableContainer
+          component={Paper}
+          sx={{
+            borderRadius: 3,
+            border: '1px solid',
+            borderColor: 'divider',
+            boxShadow: 'none',
+          }}
+        >
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Employee</TableCell>
+                <TableCell>Type</TableCell>
+                <TableCell>Dates</TableCell>
+                <TableCell>Duration</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell align="right">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {leaves.map((leave) => {
+                const duration =
+                  leave.duration ||
+                  dayjs(leave.endDate).diff(dayjs(leave.startDate), 'day') + 1;
+                const typeColor = TYPE_COLORS[leave.leaveType] || '#6366f1';
+
+                return (
+                  <TableRow
+                    key={leave._id}
+                    sx={{
+                      transition: 'background 0.15s ease',
+                      '&:hover': { bgcolor: 'action.hover' },
+                    }}
+                  >
+                    <TableCell>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1.5,
+                        }}
+                      >
+                        <Avatar
+                          sx={{
+                            width: 32,
+                            height: 32,
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            bgcolor: 'primary.main',
+                          }}
+                        >
+                          {leave.employee?.name?.charAt(0)?.toUpperCase()}
+                        </Avatar>
+                        <Box>
+                          <Typography
+                            variant="body2"
+                            sx={{ fontWeight: 600 }}
+                          >
+                            {leave.employee?.name}
+                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4 }}>
+                            <Typography component="span" sx={{ fontSize: '0.7rem' }}>
+                              {(DEPARTMENT_CONFIG[leave.employee?.department] || {}).emoji || 'ðŸ¢'}
+                            </Typography>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ fontWeight: 500 }}
+                            >
+                              {leave.employee?.department}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={leave.leaveType}
+                        size="small"
+                        sx={{
+                          bgcolor: `${typeColor}18`,
+                          color: typeColor,
+                          fontWeight: 700,
+                          textTransform: 'capitalize',
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">
+                        {dayjs(leave.startDate).format('MMM D')} â€”{' '}
+                        {dayjs(leave.endDate).format('MMM D')}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {duration} day{duration > 1 ? 's' : ''}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={leave.status}
+                        size="small"
+                        color={STATUS_COLORS[leave.status]}
+                        variant="outlined"
+                        sx={{
+                          textTransform: 'capitalize',
+                          fontSize: '0.7rem',
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <Tooltip title="View Details">
+                        <IconButton
+                          size="small"
+                          onClick={() => {
+                            setDetailLeave(leave);
+                            setDetailDialog(true);
+                          }}
+                        >
+                          <Visibility fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      {leave.status === 'pending' && (
+                        <>
+                          <Tooltip title="Approve">
+                            <IconButton
+                              size="small"
+                              onClick={() => openReview(leave, 'approved')}
+                              sx={{ color: 'success.main' }}
+                            >
+                              <CheckCircle fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Reject">
+                            <IconButton
+                              size="small"
+                              onClick={() => openReview(leave, 'rejected')}
+                              sx={{ color: 'error.main' }}
+                            >
+                              <Cancel fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+
+      {/* Pagination */}
+      {pagination.pages > 1 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+          <Pagination
+            count={pagination.pages}
+            page={pagination.page}
+            onChange={(_, page) =>
+              setPagination((prev) => ({ ...prev, page }))
+            }
+            color="primary"
+            shape="rounded"
+          />
+        </Box>
+      )}
+
+      {/* Review Dialog */}
+      <Dialog
+        open={reviewDialog}
+        onClose={() => setReviewDialog(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            border: '1px solid',
+            borderColor: 'divider',
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          {reviewAction === 'approved' ? 'âœ… Approve' : 'âŒ Reject'} Leave
+          Request
+        </DialogTitle>
+        <DialogContent>
+          {selectedLeave && (
+            <Box sx={{ mb: 2, mt: 1 }}>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                <strong>{selectedLeave.employee?.name}</strong> is requesting{' '}
+                <strong>{selectedLeave.leaveType}</strong> leave from{' '}
+                <strong>
+                  {dayjs(selectedLeave.startDate).format('MMM D, YYYY')}
+                </strong>{' '}
+                to{' '}
+                <strong>
+                  {dayjs(selectedLeave.endDate).format('MMM D, YYYY')}
+                </strong>
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{ color: 'text.secondary', mb: 2 }}
+              >
+                Reason: {selectedLeave.reason}
+              </Typography>
+            </Box>
+          )}
+          <TextField
+            label="Comment (optional)"
+            multiline
+            rows={3}
+            fullWidth
+            value={reviewComment}
+            onChange={(e) => setReviewComment(e.target.value)}
+            placeholder="Add a comment for the employee..."
+            inputProps={{ maxLength: 300 }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5 }}>
+          <Button onClick={() => setReviewDialog(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleReview}
+            disabled={reviewLoading}
+            color={reviewAction === 'approved' ? 'success' : 'error'}
+          >
+            {reviewLoading
+              ? 'Processing...'
+              : reviewAction === 'approved'
+                ? 'Approve'
+                : 'Reject'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Detail Dialog */}
+      <Dialog
+        open={detailDialog}
+        onClose={() => setDetailDialog(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            border: '1px solid',
+            borderColor: 'divider',
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>Leave Request Details</DialogTitle>
+        <DialogContent>
+          {detailLeave && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
+              {[
+                { label: 'Employee', value: detailLeave.employee?.name },
+                { label: 'Email', value: detailLeave.employee?.email },
+                { label: 'Department', value: `${(DEPARTMENT_CONFIG[detailLeave.employee?.department] || {}).emoji || 'ðŸ¢'} ${detailLeave.employee?.department || 'N/A'}` },
+                {
+                  label: 'Type',
+                  value:
+                    detailLeave.leaveType.charAt(0).toUpperCase() +
+                    detailLeave.leaveType.slice(1),
+                },
+                {
+                  label: 'From',
+                  value: dayjs(detailLeave.startDate).format('MMM D, YYYY'),
+                },
+                {
+                  label: 'To',
+                  value: dayjs(detailLeave.endDate).format('MMM D, YYYY'),
+                },
+                { label: 'Reason', value: detailLeave.reason },
+                { label: 'Status', value: detailLeave.status },
+                {
+                  label: 'Applied',
+                  value: dayjs(detailLeave.createdAt).format(
+                    'MMM D, YYYY h:mm A'
+                  ),
+                },
+              ].map((item) => (
+                <Box
+                  key={item.label}
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    py: 1,
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                  }}
+                >
+                  <Typography variant="body2" color="text.secondary">
+                    {item.label}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 600,
+                      textTransform: 'capitalize',
+                      textAlign: 'right',
+                      maxWidth: '60%',
+                    }}
+                  >
+                    {item.value}
+                  </Typography>
+                </Box>
+              ))}
+              {detailLeave.reviewComment && (
+                <Box
+                  sx={{
+                    mt: 1,
+                    p: 1.5,
+                    borderRadius: 2,
+                    bgcolor: 'action.hover',
+                    borderLeft: '3px solid',
+                    borderColor:
+                      detailLeave.status === 'approved'
+                        ? 'success.main'
+                        : 'error.main',
+                  }}
+                >
+                  <Typography variant="caption" color="text.secondary">
+                    Review Comment:
+                  </Typography>
+                  <Typography variant="body2">
+                    {detailLeave.reviewComment}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setDetailDialog(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+};
+
+export default ManagerPanel;
+
+
+======================================
+FILE: src\pages\Register.jsx
+======================================
+
+import { useState } from 'react';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import {
+  Box,
+  Card,
+  CardContent,
+  TextField,
+  Button,
+  Typography,
+  Link,
+  InputAdornment,
+  IconButton,
+  CircularProgress,
+  Alert,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+} from '@mui/material';
+import {
+  Visibility,
+  VisibilityOff,
+  Email,
+  Lock,
+  Person,
+  Business,
+  CalendarMonth,
+  Wc,
+} from '@mui/icons-material';
+import { useAuth } from '../context/AuthContext';
+import { DEPARTMENTS, DEPARTMENT_CONFIG } from '../constants/departments';
+import toast from 'react-hot-toast';
+
+/**
+ * Registration Page
+ * Matches Login page design with additional fields
+ */
+const Register = () => {
+  const navigate = useNavigate();
+  const { register } = useAuth();
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    department: '',
+    gender: '',
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setError('');
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      await register({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        department: formData.department || 'General',
+        gender: formData.gender || 'other',
+      });
+      toast.success('Account created successfully!');
+      navigate('/dashboard');
+    } catch (err) {
+      const msg =
+        err.response?.data?.message || 'Registration failed. Please try again.';
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        p: 2,
+        background: (theme) =>
+          theme.palette.mode === 'dark'
+            ? 'radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.08) 0%, transparent 50%), radial-gradient(ellipse at 80% 20%, rgba(20,184,166,0.06) 0%, transparent 50%), #0a0e1a'
+            : 'radial-gradient(ellipse at 20% 50%, rgba(79,70,229,0.06) 0%, transparent 50%), #f8fafc',
+      }}
+    >
+      <Box sx={{ width: '100%', maxWidth: 440 }}>
+        {/* Brand */}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 1.5,
+            mb: 4,
+            animation: 'fadeIn 0.6s ease-out',
+            '@keyframes fadeIn': {
+              from: { opacity: 0, transform: 'translateY(-16px)' },
+              to: { opacity: 1, transform: 'translateY(0)' },
+            },
+          }}
+        >
+          <CalendarMonth
+            sx={{
+              fontSize: 42,
+              color: 'primary.main',
+              filter: 'drop-shadow(0 0 12px rgba(99,102,241,0.4))',
+            }}
+          />
+          <Typography
+            variant="h4"
+            sx={{
+              fontWeight: 800,
+              background: 'linear-gradient(135deg, #6366f1, #14b8a6)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
+          >
+            LeaveFlow
+          </Typography>
+        </Box>
+
+        <Card
+          sx={{
+            animation: 'slideUp 0.5s ease-out 0.2s both',
+            '@keyframes slideUp': {
+              from: { opacity: 0, transform: 'translateY(20px)' },
+              to: { opacity: 1, transform: 'translateY(0)' },
+            },
+          }}
+        >
+          <CardContent sx={{ p: 4 }}>
+            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+              Create Account
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{ color: 'text.secondary', mb: 3 }}
+            >
+              Get started with LeaveFlow today
+            </Typography>
+
+            {error && (
+              <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+                {error}
+              </Alert>
+            )}
+
+            <form onSubmit={handleSubmit}>
+              <TextField
+                id="register-name"
+                name="name"
+                label="Full Name"
+                fullWidth
+                required
+                value={formData.name}
+                onChange={handleChange}
+                sx={{ mb: 2 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Person sx={{ color: 'text.secondary', fontSize: 20 }} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+
+              <TextField
+                id="register-email"
+                name="email"
+                label="Email Address"
+                type="email"
+                fullWidth
+                required
+                value={formData.email}
+                onChange={handleChange}
+                sx={{ mb: 2 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Email sx={{ color: 'text.secondary', fontSize: 20 }} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel id="register-department-label">Department</InputLabel>
+                <Select
+                  id="register-department"
+                  labelId="register-department-label"
+                  name="department"
+                  value={formData.department}
+                  label="Department"
+                  onChange={handleChange}
+                  startAdornment={
+                    <InputAdornment position="start">
+                      <Business
+                        sx={{ color: 'text.secondary', fontSize: 20 }}
+                      />
+                    </InputAdornment>
+                  }
+                >
+                  {DEPARTMENTS.map((dept) => {
+                    const cfg = DEPARTMENT_CONFIG[dept] || {};
+                    return (
+                      <MenuItem key={dept} value={dept}>
+                        {cfg.emoji || 'ðŸ¢'} {dept}
+                      </MenuItem>
+                    );
+                  })}
+                </Select>
+              </FormControl>
+
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel id="register-gender-label">Gender</InputLabel>
+                <Select
+                  id="register-gender"
+                  labelId="register-gender-label"
+                  name="gender"
+                  value={formData.gender}
+                  label="Gender"
+                  onChange={handleChange}
+                  startAdornment={
+                    <InputAdornment position="start">
+                      <Wc sx={{ color: 'text.secondary', fontSize: 20 }} />
+                    </InputAdornment>
+                  }
+                >
+                  <MenuItem value="male">Male</MenuItem>
+                  <MenuItem value="female">Female</MenuItem>
+                  <MenuItem value="other">Other</MenuItem>
+                </Select>
+              </FormControl>
+
+              <TextField
+                id="register-password"
+                name="password"
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                fullWidth
+                required
+                value={formData.password}
+                onChange={handleChange}
+                sx={{ mb: 2 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Lock sx={{ color: 'text.secondary', fontSize: 20 }} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowPassword(!showPassword)}
+                        edge="end"
+                        size="small"
+                      >
+                        {showPassword ? (
+                          <VisibilityOff fontSize="small" />
+                        ) : (
+                          <Visibility fontSize="small" />
+                        )}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+
+              <TextField
+                id="register-confirm-password"
+                name="confirmPassword"
+                label="Confirm Password"
+                type="password"
+                fullWidth
+                required
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                sx={{ mb: 3 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Lock sx={{ color: 'text.secondary', fontSize: 20 }} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+
+              <Button
+                id="register-submit"
+                type="submit"
+                variant="contained"
+                fullWidth
+                size="large"
+                disabled={loading}
+                sx={{ py: 1.5, fontSize: '1rem' }}
+              >
+                {loading ? (
+                  <CircularProgress size={24} color="inherit" />
+                ) : (
+                  'Create Account'
+                )}
+              </Button>
+            </form>
+
+            <Typography
+              variant="body2"
+              sx={{ textAlign: 'center', mt: 3, color: 'text.secondary' }}
+            >
+              Already have an account?{' '}
+              <Link
+                component={RouterLink}
+                to="/login"
+                sx={{
+                  fontWeight: 600,
+                  color: 'primary.main',
+                  textDecoration: 'none',
+                  '&:hover': { textDecoration: 'underline' },
+                }}
+              >
+                Sign in
+              </Link>
+            </Typography>
+          </CardContent>
+        </Card>
+      </Box>
+    </Box>
+  );
+};
+
+export default Register;
+
+
+======================================
+FILE: src\theme\theme.js
+======================================
+
+import { createTheme, alpha } from '@mui/material/styles';
+
+/**
+ * Custom MUI theme for LeaveFlow
+ * Premium enterprise aesthetic with glassmorphism and rich micro-interactions
+ */
+
+const getTheme = (mode) => {
+  const isDark = mode === 'dark';
+
+  // Curated palette
+  const palette = {
+    primary: isDark
+      ? { main: '#818cf8', light: '#a5b4fc', dark: '#6366f1', contrastText: '#0f0f23' }
+      : { main: '#4f46e5', light: '#6366f1', dark: '#4338ca', contrastText: '#ffffff' },
+    secondary: isDark
+      ? { main: '#2dd4bf', light: '#5eead4', dark: '#14b8a6', contrastText: '#0f0f23' }
+      : { main: '#0d9488', light: '#14b8a6', dark: '#0f766e', contrastText: '#ffffff' },
+    background: isDark
+      ? { default: '#06070e', paper: '#0d0f1a' }
+      : { default: '#f4f6fb', paper: '#ffffff' },
+    text: isDark
+      ? { primary: '#eef0f6', secondary: '#8892b0' }
+      : { primary: '#1a1d2e', secondary: '#5a6178' },
+    divider: isDark ? 'rgba(136, 146, 176, 0.1)' : 'rgba(0, 0, 0, 0.06)',
+    success: { main: isDark ? '#34d399' : '#059669', light: '#6ee7b7', dark: '#047857' },
+    warning: { main: isDark ? '#fbbf24' : '#d97706', light: '#fde68a', dark: '#b45309' },
+    error: { main: isDark ? '#f87171' : '#dc2626', light: '#fca5a5', dark: '#b91c1c' },
+    info: { main: isDark ? '#60a5fa' : '#2563eb', light: '#93c5fd', dark: '#1d4ed8' },
+  };
+
+  return createTheme({
+    palette: {
+      mode,
+      ...palette,
+    },
+    typography: {
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      h1: { fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1.1 },
+      h2: { fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.2 },
+      h3: { fontWeight: 700, letterSpacing: '-0.015em' },
+      h4: { fontWeight: 700, letterSpacing: '-0.01em' },
+      h5: { fontWeight: 600 },
+      h6: { fontWeight: 600, fontSize: '1.05rem' },
+      subtitle1: { fontWeight: 500, letterSpacing: '0.005em' },
+      subtitle2: { fontWeight: 600, letterSpacing: '0.005em' },
+      body1: { lineHeight: 1.65 },
+      body2: { lineHeight: 1.6 },
+      button: { fontWeight: 600, textTransform: 'none', letterSpacing: '0.01em' },
+      caption: { letterSpacing: '0.015em' },
+    },
+    shape: {
+      borderRadius: 14,
+    },
+    shadows: [
+      'none',
+      isDark ? '0 1px 3px rgba(0,0,0,0.4)' : '0 1px 3px rgba(0,0,0,0.05)',
+      isDark ? '0 2px 6px rgba(0,0,0,0.4)' : '0 2px 6px rgba(0,0,0,0.06)',
+      isDark ? '0 4px 12px rgba(0,0,0,0.45)' : '0 4px 12px rgba(0,0,0,0.07)',
+      isDark ? '0 6px 16px rgba(0,0,0,0.5)' : '0 6px 16px rgba(0,0,0,0.08)',
+      isDark ? '0 8px 24px rgba(0,0,0,0.5)' : '0 8px 24px rgba(0,0,0,0.09)',
+      ...Array(19).fill(isDark ? '0 10px 32px rgba(0,0,0,0.55)' : '0 10px 32px rgba(0,0,0,0.1)'),
+    ],
+    components: {
+      MuiCssBaseline: {
+        styleOverrides: {
+          body: {
+            backgroundImage: isDark
+              ? 'radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99,102,241,0.08), transparent), radial-gradient(ellipse 60% 40% at 85% 100%, rgba(20,184,166,0.05), transparent)'
+              : 'radial-gradient(ellipse 80% 50% at 50% -20%, rgba(79,70,229,0.04), transparent)',
+          },
+        },
+      },
+      MuiButton: {
+        defaultProps: { disableElevation: true },
+        styleOverrides: {
+          root: {
+            borderRadius: 11,
+            padding: '10px 22px',
+            fontSize: '0.875rem',
+            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+          },
+          containedPrimary: {
+            background: isDark
+              ? 'linear-gradient(135deg, #818cf8 0%, #6366f1 100%)'
+              : 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+            boxShadow: isDark
+              ? '0 4px 14px rgba(129, 140, 248, 0.25)'
+              : '0 4px 14px rgba(99, 102, 241, 0.3)',
+            '&:hover': {
+              background: isDark
+                ? 'linear-gradient(135deg, #a5b4fc 0%, #818cf8 100%)'
+                : 'linear-gradient(135deg, #818cf8 0%, #6366f1 100%)',
+              boxShadow: isDark
+                ? '0 6px 20px rgba(129, 140, 248, 0.35)'
+                : '0 6px 20px rgba(99, 102, 241, 0.4)',
+              transform: 'translateY(-1px)',
+            },
+            '&:active': {
+              transform: 'translateY(0px)',
+            },
+          },
+          outlined: {
+            borderWidth: '1.5px',
+            '&:hover': {
+              borderWidth: '1.5px',
+              transform: 'translateY(-1px)',
+            },
+          },
+        },
+      },
+      MuiCard: {
+        styleOverrides: {
+          root: {
+            borderRadius: 18,
+            backgroundImage: 'none',
+            border: isDark ? '1px solid rgba(136,146,176,0.08)' : '1px solid rgba(0,0,0,0.05)',
+            backgroundColor: isDark ? alpha('#0d0f1a', 0.7) : '#ffffff',
+            backdropFilter: isDark ? 'blur(12px)' : 'none',
+            boxShadow: isDark
+              ? '0 4px 24px rgba(0, 0, 0, 0.35)'
+              : '0 1px 8px rgba(0, 0, 0, 0.04), 0 4px 24px rgba(0, 0, 0, 0.03)',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          },
+        },
+      },
+      MuiPaper: {
+        styleOverrides: {
+          root: {
+            backgroundImage: 'none',
+          },
+        },
+      },
+      MuiTextField: {
+        styleOverrides: {
+          root: {
+            '& .MuiOutlinedInput-root': {
+              borderRadius: 11,
+              transition: 'all 0.2s ease',
+              '&.Mui-focused': {
+                boxShadow: isDark
+                  ? '0 0 0 3px rgba(129,140,248,0.15)'
+                  : '0 0 0 3px rgba(99,102,241,0.1)',
+              },
+            },
+          },
+        },
+      },
+      MuiChip: {
+        styleOverrides: {
+          root: {
+            fontWeight: 600,
+            borderRadius: 9,
+            letterSpacing: '0.01em',
+          },
+        },
+      },
+      MuiTableCell: {
+        styleOverrides: {
+          root: {
+            borderBottom: isDark
+              ? '1px solid rgba(136,146,176,0.06)'
+              : '1px solid rgba(0,0,0,0.04)',
+            padding: '14px 16px',
+          },
+          head: {
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            fontSize: '0.72rem',
+            letterSpacing: '0.06em',
+            color: isDark ? '#8892b0' : '#5a6178',
+            backgroundColor: isDark ? 'rgba(13,15,26,0.6)' : 'rgba(244,246,251,0.8)',
+          },
+        },
+      },
+      MuiDrawer: {
+        styleOverrides: {
+          paper: {
+            border: 'none',
+            backgroundImage: 'none',
+          },
+        },
+      },
+      MuiDialog: {
+        styleOverrides: {
+          paper: {
+            borderRadius: 20,
+            backgroundImage: 'none',
+            border: isDark ? '1px solid rgba(136,146,176,0.1)' : '1px solid rgba(0,0,0,0.06)',
+            boxShadow: isDark
+              ? '0 24px 48px rgba(0,0,0,0.6)'
+              : '0 24px 48px rgba(0,0,0,0.12)',
+          },
+        },
+      },
+      MuiAppBar: {
+        styleOverrides: {
+          root: {
+            backgroundImage: 'none',
+          },
+        },
+      },
+      MuiLinearProgress: {
+        styleOverrides: {
+          root: {
+            borderRadius: 6,
+            height: 5,
+            backgroundColor: isDark ? 'rgba(136,146,176,0.08)' : 'rgba(0,0,0,0.04)',
+          },
+        },
+      },
+      MuiTabs: {
+        styleOverrides: {
+          indicator: {
+            height: 3,
+            borderRadius: '3px 3px 0 0',
+          },
+        },
+      },
+      MuiTooltip: {
+        styleOverrides: {
+          tooltip: {
+            borderRadius: 8,
+            fontSize: '0.76rem',
+            fontWeight: 500,
+            backdropFilter: 'blur(8px)',
+          },
+        },
+      },
+      MuiAvatar: {
+        styleOverrides: {
+          root: {
+            fontWeight: 700,
+          },
+        },
+      },
+      MuiPagination: {
+        styleOverrides: {
+          root: {
+            '& .MuiPaginationItem-root': {
+              fontWeight: 600,
+              borderRadius: 9,
+            },
+          },
+        },
+      },
+    },
+  });
+};
+
+export default getTheme;
+
